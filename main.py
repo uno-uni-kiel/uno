@@ -2,9 +2,9 @@ from flask import Flask, render_template, redirect, session
 import sqlite3
 
 from home import handle_home
-from dashboard import handle_dashboard
-from game import handle_game
+from create_or_join import handle_create_or_join
 from lobby import handle_lobby
+from game_simple import handle_game_simple
 
 from refresh import handle_refresh
 
@@ -18,17 +18,17 @@ cur = con.cursor()
 def home():
     return handle_home(con, cur)
 
-@app.route("/dashboard", methods = [ "GET", "POST" ])
-def dashboard():
-    return handle_dashboard(con, cur)
-
-@app.route("/game", methods = [ "GET", "POST" ])
-def game():
-    return handle_game(con, cur)
+@app.route("/create_or_join", methods = [ "GET", "POST" ])
+def create_or_join():
+    return handle_create_or_join(con, cur)
 
 @app.route("/lobby", methods = [ "GET", "POST" ])
 def lobby():
     return handle_lobby(con, cur)
+
+@app.route("/game-simple", methods = [ "GET", "POST" ])
+def game_simple():
+    return handle_game_simple(con, cur)
 
 @app.route("/debug/delete_games")
 def debug_deleteGames():
