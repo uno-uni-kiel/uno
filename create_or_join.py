@@ -11,10 +11,13 @@ def handle_create_or_join(con: Connection, cur: Cursor):
         SELECT game_id FROM spieler WHERE id = ?
     ''', [ player_id ]).fetchone()[0]
 
+    # redirect to lobby if already joined a game
     if game_id:
         return redirect("/lobby")
 
+    # actions
     if request.method == "POST":
+        # create a new game
         if request.form["type"] == "create":
             name = request.form["name"]
 
@@ -26,6 +29,7 @@ def handle_create_or_join(con: Connection, cur: Cursor):
 
             game_id = cur.fetchone()[0]
             con.commit()
+        # join an existing game
         if request.form["type"] == "join":
             game_id = request.form["game_id"]   
 
@@ -42,6 +46,7 @@ def handle_create_or_join(con: Connection, cur: Cursor):
         
         return redirect("/lobby")
 
+    # function which filters all ingame or ended games
     def only_lobby(g):
         return g[2] == 0
 

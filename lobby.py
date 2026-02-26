@@ -14,32 +14,18 @@ def handle_lobby(con: Connection, cur: Cursor):
         SELECT game_id FROM spieler WHERE id = ?
     ''', [ player_id ]).fetchone()[0]
 
+    # redirect if player hasn't joined a game
     if not game_id:
         return redirect("/create_or_join")
 
+    # retrieve game info
     game_name, game_deck_id, game_state = cur.execute('''
         SELECT name, deck, state FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
-    # game is running, redirect to game route
-    if game_state == 1:
-        if game_deck_id == 0:
-            return redirect("/game/simple")
-        elif game_deck_id == 1:
-            return redirect("/game/complex")
-    elif game_state == 2:
-        return redirect("/game/end")
-
-    all_players = cur.execute('''
-        SELECT position, name FROM spieler WHERE game_id = ?
-    ''', [ game_id ]).fetchall()
-
-    def sortByPosition(e):
-        return e[0]
-
-    all_players.sort(key = sortByPosition)
-
+    # actions
     if request.method == "POST":
+        # select the deck to play with
         if request.form["type"] == "select_deck":
             deck = request.form["deck"]
 
@@ -52,6 +38,7 @@ def handle_lobby(con: Connection, cur: Cursor):
                 UPDATE game SET deck = ?, refresh = ? WHERE id = ?
             ''', [ game_deck_id, round(time.time()), game_id ])
             con.commit()
+        # start the game
         if request.form["type"] == "start":
             if game_deck_id == 0:
                 game_simple.start_game(con, cur, game_id)
@@ -59,6 +46,26 @@ def handle_lobby(con: Connection, cur: Cursor):
             elif game_deck_id == 1:
                 # todo
                 print("not implemented yet")
+
+    # redirect to game page if game is running
+    if game_state == 1:
+        if game_deck_id == 0:
+            return redirect("/game/simple")
+        elif game_deck_id == 1:
+            return redirect("/game/complex")
+    # redirect to game end page if game has ended
+    elif game_state == 2:
+        return redirect("/game/end")
+
+    # retrieve all players that joined the game
+    all_players = cur.execute('''
+        SELECT position, name FROM spieler WHERE game_id = ?
+    ''', [ game_id ]).fetchall()
+
+    # sort players by their positiion
+    def sortByPosition(e):
+        return e[0]
+    all_players.sort(key = sortByPosition)
 
     return render_template(
         "lobby.html", 

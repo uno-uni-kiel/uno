@@ -16,6 +16,8 @@ app.secret_key = '9^@w86n_@ws@m1jd_)7_&ayl@mm$9&pw9@noj*@)z)s9##dv$a'
 con = sqlite3.connect("database.db", check_same_thread = False)
 cur = con.cursor()
 
+# register routes
+
 @app.route("/", methods = [ "GET", "POST" ])
 def home():
     return handle_home(con, cur)

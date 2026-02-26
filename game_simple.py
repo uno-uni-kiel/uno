@@ -13,25 +13,33 @@ def handle_game_simple(con: Connection, cur: Cursor):
         SELECT position, game_id FROM spieler WHERE id = ?
     ''', [ player_id ]).fetchone()
 
+    # redirect if player isn't in any game
     if not game_id:
         return redirect("/create_or_join")
 
+    # actions
     if request.method == "POST":
+        # draw a card
         if request.form["type"] == "draw":
             draw_card(con, cur, player_position, player_id, game_id)
+        # place a card
         elif request.form["type"] == "place_card":
             place_card(con, cur, player_position, player_id, game_id, request.form["card_id"])
 
+    # retrieve game info
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
         SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
+    # redirect to lobby if game hasn't begun
     if game_state == 0:
         return redirect("/lobby")
 
+    # redirect to end screen if game has ended
     if game_state == 2:
         return redirect("/game/end")
 
+    # retrieve all players including their card count
     all_players = cur.execute('''
         SELECT s.position, s.name, COUNT(z.simple_deck_id)
         FROM spieler s
@@ -41,6 +49,7 @@ def handle_game_simple(con: Connection, cur: Cursor):
         ORDER BY s.position ASC
     ''', [ game_id ]).fetchall()
 
+    # retrieve all current players cards
     player_cards = cur.execute('''
         SELECT d.id, t.farbe, t.wert 
         FROM kartenzustand z, simpledeck d, kartentyp t
@@ -48,6 +57,7 @@ def handle_game_simple(con: Connection, cur: Cursor):
             z.simple_deck_id = d.id AND d.kartentyp_id = t.id
     ''', [ player_id, game_id ]).fetchall()
 
+    # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
         SELECT t.farbe, t.wert
         FROM simpledeck d, kartentyp t
@@ -76,19 +86,21 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
     ''', [ game_id ])
     con.commit()
 
+    # retrieve all joined player ids
     all_player_ids = cur.execute('''
         SELECT id FROM spieler WHERE game_id = ?
     ''', [ game_id ]).fetchall()
 
+    # retrieve all available card ids
     all_card_ids = cur.execute('''
         SELECT id FROM simpledeck
     ''').fetchall()
 
-    # shuffle card stack
+    # shuffle card ids
     random.shuffle(all_card_ids)
 
+    # give each player 7 random cards from simple deck
     for player_id in all_player_ids:
-        # give player 7 cards
         for i in range(7):
             card_id = all_card_ids.pop()
 
@@ -96,6 +108,7 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
                 INSERT INTO kartenzustand (simple_deck_id, ownership, game_id) VALUES (?, ?, ?)
             ''', [ card_id[0], player_id[0], game_id ])
 
+    # set one random card as current card
     current_card_id = all_card_ids.pop()[0]
 
     cur.execute('''
@@ -173,12 +186,14 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     if game_turn != player_position:
         return
 
+    # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
         SELECT t.farbe, t.wert
         FROM simpledeck d, kartentyp t
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
+    # retrieve placing card info
     card_farbe, card_wert = cur.execute('''
         SELECT t.farbe, t.wert
         FROM simpledeck d, kartentyp t
@@ -190,12 +205,14 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         return
 
     # card can be placed
+
+    # retrieve card count of player
     player_card_count = cur.execute('''
         SELECT COUNT(simple_deck_id) FROM kartenzustand
         WHERE game_id = ? AND ownership = ?
     ''', [ game_id, player_id ]).fetchone()[0]
 
-    # end of game, player has won
+    # if card count = 1, player has won
     if player_card_count == 1:
         cur.execute('''
             UPDATE game SET state = 2, winner = ?, refresh = ? WHERE id = ?
