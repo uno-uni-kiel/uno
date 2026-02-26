@@ -2,6 +2,9 @@ from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
 
 def handle_home(con: Connection, cur: Cursor):
+    if "spieler_id" in session:
+        return redirect("create_or_join")
+
     if request.method == "POST":
         name = request.form["name"]
         cur.execute('''
@@ -14,9 +17,6 @@ def handle_home(con: Connection, cur: Cursor):
         con.commit()
 
         session["spieler_id"] = new_id
-        return redirect("create_or_join")
-
-    if "spieler_id" in session:
         return redirect("create_or_join")
 
     return render_template("home.html")
