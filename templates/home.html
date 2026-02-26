@@ -1,55 +1,25 @@
 
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Create or join game{% endblock %}
 
 {% block content %}
-    <div class="flex h-screen w-screen bg-emerald-900 text-gray-100">
-        <div class="flex flex-1 items-center justify-center p-12 border-r border-emerald-600">
-            <div class="w-full max-w-md">
-                <h2 class="text-3xl font-extrabold tracking-tight mb-8">Neues Spiel</h2>
-                
-                <form class="space-y-6">
-                    <div>
-                        <label for="deck-select" class="block text-sm font-medium text-gray-200 mb-1">Name der Lobby</label>
-                        <input type="text" id="game-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                    </div>
+    <div class="h-screen w-screen flex items-center justify-center bg-emerald-800 text-white">
+        <div class="w-full max-w-md">
+            <h2 class="text-3xl font-extrabold tracking-tight mb-8">Neuer Spieler</h2>
+            
+            <form class="space-y-6" action="" method="post">
+                <input type="hidden" name="type" value="create">
 
-                    <div>
-                        <label for="deck-select" class="block text-sm font-medium text-gray-200 mb-1">Deck</label>
-                        <input type="password" id="deck-select" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                    </div>
-
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                        Erstellen
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="flex flex-1 items-center justify-center p-12 bg-emerald-800">
-            <div>
-                <div class="text-end">
-                    <h2 class="text-3xl font-extrabold tracking-tight mb-4">Spiel beitreten</h2>
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-200 mb-1">Dein Name</label>
+                    <input type="text" id="name" name="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                 </div>
 
-                <br>
-
-                <div class="space-y-6">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                        Beispiel Spiel
-                    </button>
-
-
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                        Beispiel Spiel 2
-                    </button>
-
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                        Beispiel Spiel 3
-                    </button>
-                </div>
-            </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                    Erstellen
+                </button>
+            </form>
         </div>
     </div>
 {% endblock %}
