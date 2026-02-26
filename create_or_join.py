@@ -6,7 +6,13 @@ def handle_create_or_join(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
 
-    spieler_id = session["spieler_id"]
+    player_id = session["spieler_id"]
+    game_id = cur.execute('''
+        SELECT game_id FROM spieler WHERE id = ?
+    ''', [ player_id ]).fetchone()[0]
+
+    if game_id:
+        return redirect("/lobby")
 
     if request.method == "POST":
         if request.form["type"] == "create":
@@ -29,7 +35,7 @@ def handle_create_or_join(con: Connection, cur: Cursor):
 
         cur.execute('''
              UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
-        ''', [game_id, next_position, spieler_id])
+        ''', [ game_id, next_position, player_id ])
 
         session["game_id"] = game_id
         refresh(con, cur, game_id)
