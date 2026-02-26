@@ -5,16 +5,31 @@
 {% block content %}
     <div class="h-screen w-screen flex items-center justify-center bg-emerald-800 text-white">
         <div class="text-center">
-            <h2 class="text-3xl font-extrabold tracking-tight mb-4">Lobby</h2>
+            <h2 class="text-3xl font-extrabold tracking-tight mb-4">» {{ game[0] }} «</h2>
+
+            <select name="game-deck">
+                <option>Simple</option>
+                <option>Complex</option>
+            </select>
 
             <p>
                 Warten auf Spielbeginn ...
             </p>
 
             <form action="" method="post">
-                <input type="hidden" value="hello">
-                <button type="submit">hallo</button>
+
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                    Start
+                </button>
             </form>
+        </div>
+
+        <div class="absolute left-4 top-4 bg-emerald-700 p-4 rounded-lg">
+            {% for position, name in all_players %}
+            <p class="px-4 py-2">
+                {{ position }}. {{ name }}
+            </p>
+            {% endfor %}
         </div>
     </div>
 {% endblock %}
