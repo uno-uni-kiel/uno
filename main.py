@@ -4,6 +4,8 @@ import sqlite3
 from home import handle_home
 from create_or_join import handle_create_or_join
 from lobby import handle_lobby
+
+from game import handle_game_end, handle_game_leave
 from game_simple import handle_game_simple
 
 from refresh import handle_refresh
@@ -26,9 +28,18 @@ def create_or_join():
 def lobby():
     return handle_lobby(con, cur)
 
-@app.route("/game-simple", methods = [ "GET", "POST" ])
+@app.route("/game/simple", methods = [ "GET", "POST" ])
 def game_simple():
     return handle_game_simple(con, cur)
+
+@app.route("/game/end", methods = [ "GET", "POST" ])
+def game_end():
+    return handle_game_end(con, cur)
+
+
+@app.route("/game/leave", methods = [ "GET", "POST" ])
+def game_leave():
+    return handle_game_leave(con, cur)
 
 @app.route("/debug/delete_games")
 def debug_deleteGames():
