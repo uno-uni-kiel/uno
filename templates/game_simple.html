@@ -43,9 +43,13 @@
 
                     <button type="submit" style="height: 280px; width: 200px" class="shadow-sm rounded-xs p-4 cursor-pointer">
                         {% if game_turn == player_position %}
+                            {% if farbe != current_card_farbe and wert != current_card_wert %}
+                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" class="brightness-70">
+                            {% else %}
                             <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png">
+                            {% endif %}
                         {% else %}
-                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" class="grayscale-50">
+                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" class="brightness-50">
                         {% endif %}
                     </button>
                 </form>

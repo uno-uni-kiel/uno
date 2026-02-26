@@ -1,4 +1,4 @@
-from flask import Request, render_template, request, session
+from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
 
 import time
@@ -8,11 +8,10 @@ def handle_game_simple(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
 
-    spieler_id = session["spieler_id"]
-
-    player_id, player_position, game_id = cur.execute('''
-        SELECT id, position, game_id FROM spieler WHERE id = ?
-    ''', [ spieler_id ]).fetchone()
+    player_id = session["spieler_id"]
+    player_position, game_id = cur.execute('''
+        SELECT position, game_id FROM spieler WHERE id = ?
+    ''', [ player_id ]).fetchone()
 
     if not game_id:
         return redirect("/create_or_join")
@@ -29,6 +28,9 @@ def handle_game_simple(con: Connection, cur: Cursor):
 
     if game_state == 0:
         return redirect("/lobby")
+
+    if game_state == 2:
+        return redirect("/game/end")
 
     all_players = cur.execute('''
         SELECT s.position, s.name, COUNT(z.simple_deck_id)
@@ -109,20 +111,7 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
     ])
     con.commit()
 
-def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int):
-    print(player_id)
-
-def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int):
-    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
-        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
-    ''', [ game_id ]).fetchone()
-
-    # don't run if it isn't player's turn
-    if game_turn != player_position:
-        return
-
-    # TODO: checks (game state, game turn, current_card_id matching etc)
-
+def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
     new_turn = game_turn + 1
     new_turn_player = cur.execute('''
         SELECT 1 FROM spieler WHERE game_id = ? AND position = ? LIMIT 1
@@ -131,15 +120,100 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # reset turn to 1 if no new player is found
     if new_turn_player is None:
         new_turn = 1
+    
+    return new_turn
+
+def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int):
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # don't continue if game isn't running
+    if game_state != 1:
+        return
+
+    # don't continue if it isn't player's turn
+    if game_turn != player_position:
+        return
+
+    # pick random card out of simpledeck which has no state and isn't the current card
+    drawd_card_id = cur.execute('''
+        SELECT d.id
+        FROM simpledeck d, game g
+        LEFT JOIN kartenzustand k ON d.id = k.simple_deck_id
+        WHERE k.ownership IS NULL AND d.id != ?
+        ORDER BY random()
+        LIMIT 1
+    ''', [ game_current_card_id ]).fetchone()[0]
+
+    # set card ownership to player_id
+    cur.execute('''
+        INSERT INTO kartenzustand (simple_deck_id, ownership, game_id) VALUES (?, ?, ?)
+    ''', [ drawd_card_id, player_id, game_id ])
+    # new turn and refresh game
+    cur.execute('''
+        UPDATE game SET turn = ?, refresh = ? WHERE id = ?
+    ''', [ 
+        calculate_new_turn(con, cur, game_id, game_turn), 
+        round(time.time()), 
+        game_id 
+    ])
+    con.commit()
+
+def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int):
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # don't continue if game isn't running
+    if game_state != 1:
+        return
+
+    # don't continue if it isn't player's turn
+    if game_turn != player_position:
+        return
+
+    current_card_farbe, current_card_wert = cur.execute('''
+        SELECT t.farbe, t.wert
+        FROM simpledeck d, kartentyp t
+        WHERE d.id = ? AND d.kartentyp_id = t.id
+    ''', [ game_current_card_id ]).fetchone()
+
+    card_farbe, card_wert = cur.execute('''
+        SELECT t.farbe, t.wert
+        FROM simpledeck d, kartentyp t
+        WHERE d.id = ? AND d.kartentyp_id = t.id
+    ''', [ card_id ]).fetchone()
+
+    # don't continue if neither card color or card value match
+    if current_card_farbe != card_farbe and current_card_wert != card_wert:
+        return
+
+    # card can be placed
+    player_card_count = cur.execute('''
+        SELECT COUNT(simple_deck_id) FROM kartenzustand
+        WHERE game_id = ? AND ownership = ?
+    ''', [ game_id, player_id ]).fetchone()[0]
+
+    # end of game, player has won
+    if player_card_count == 1:
+        cur.execute('''
+            UPDATE game SET state = 2, winner = ?, refresh = ? WHERE id = ?
+        ''', [ player_id, round(time.time()), game_id ])
+        con.commit()
+        return
 
     # set current_card_id to card_id, set new turn value and update refresh value
     cur.execute('''
         UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
-    ''', [ card_id, new_turn, round(time.time()), game_id ])
+    ''', [ 
+        card_id, 
+        calculate_new_turn(con, cur, game_id, game_turn), 
+        round(time.time()), 
+        game_id 
+    ])
     # delete kartenzustand
     cur.execute('''
         DELETE FROM kartenzustand WHERE simple_deck_id = ? AND ownership = ? AND game_id = ?
     ''', [ card_id, player_id, game_id ])
     con.commit()
-
-    print(player_id)
