@@ -1,30 +1,44 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, redirect, session
 import sqlite3
 
 from home import handle_home
+from dashboard import handle_dashboard
 from game import handle_game
 from lobby import handle_lobby
 
-app = Flask(__name__)
+from refresh import handle_refresh
 
-con = sqlite3.connect("uno.db", check_same_thread = False)
+app = Flask(__name__)
+app.secret_key = '9^@w86n_@ws@m1jd_)7_&ayl@mm$9&pw9@noj*@)z)s9##dv$a'
+
+con = sqlite3.connect("database.db", check_same_thread = False)
 cur = con.cursor()
 
-@app.route("/")
+@app.route("/", methods = [ "GET", "POST" ])
 def home():
-    return handle_home(request, con, cur)
+    return handle_home(con, cur)
+
+@app.route("/dashboard", methods = [ "GET", "POST" ])
+def dashboard():
+    return handle_dashboard(con, cur)
 
 @app.route("/game", methods = [ "GET", "POST" ])
 def game():
-    return handle_game(request, con, cur)
+    return handle_game(con, cur)
 
 @app.route("/lobby", methods = [ "GET", "POST" ])
 def lobby():
-    return handle_lobby(request, con, cur)
+    return handle_lobby(con, cur)
+
+@app.route("/debug/delete_games")
+def debug_deleteGames():
+    cur.execute("DELETE FROM Game")
+    con.commit()
+    return "DONE"
 
 @app.route("/refresh")
 def refresh():
-    return "hello"
+    return handle_refresh(con, cur)
 
 if __name__ == "__main__":
-    app.run(debug = True)
+    app.run(debug = True, threaded = False)
