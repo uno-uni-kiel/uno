@@ -9,23 +9,26 @@ def handle_lobby(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
 
-    spieler_id = session["spieler_id"]
-
-    spieler = cur.execute('''
+    player_id = session["spieler_id"]
+    game_id = cur.execute('''
         SELECT game_id FROM spieler WHERE id = ?
-    ''', [ spieler_id ]).fetchone()
-    game_id = spieler[0]
+    ''', [ player_id ]).fetchone()[0]
 
     if not game_id:
         return redirect("/create_or_join")
 
-    game = cur.execute('''
+    game_name, game_deck_id, game_state = cur.execute('''
         SELECT name, deck, state FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
-    game_name = game[0]
-    game_deck_id = game[1]
-    game_state = game[2]
+    # game is running, redirect to game route
+    if game_state == 1:
+        if game_deck_id == 0:
+            return redirect("/game/simple")
+        elif game_deck_id == 1:
+            return redirect("/game/complex")
+    elif game_state == 2:
+        return redirect("/game/end")
 
     all_players = cur.execute('''
         SELECT position, name FROM spieler WHERE game_id = ?
@@ -56,13 +59,6 @@ def handle_lobby(con: Connection, cur: Cursor):
             elif game_deck_id == 1:
                 # todo
                 print("not implemented yet")
-    
-    # game is running, redirect to game route
-    if game_state == 1:
-        if game_deck_id == 0:
-            return redirect("/game-simple")
-        elif game_deck_id == 1:
-            return redirect("/game-complex")
 
     return render_template(
         "lobby.html", 
