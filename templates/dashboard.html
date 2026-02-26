@@ -1,0 +1,58 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <div class="flex h-screen w-screen bg-emerald-900 text-gray-100">
+        <div class="flex flex-1 items-center justify-center p-12 border-r border-emerald-600">
+            <div class="w-full max-w-md">
+                <h2 class="text-3xl font-extrabold tracking-tight mb-8">Neues Spiel</h2>
+                
+                <form class="space-y-6" action="" method="post">
+                    <input type="hidden" name="type" value="create">
+
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-200 mb-1">Name der Lobby</label>
+                        <input type="text" id="name" name="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    </div>
+
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                        Erstellen
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="flex flex-1 items-center justify-center p-12 bg-emerald-800">
+            <div>
+                <div class="text-end">
+                    <h2 class="text-3xl font-extrabold tracking-tight mb-4">Spiel beitreten</h2>
+                </div>
+
+                <br>
+
+                <div class="space-y-6">
+                    {% for id, name, state in games %}
+                    <form method="post" action="">
+                        <input type="hidden" name="type" value="join">
+                        <input type="hidden" name="game_id" value="{{ id }}">
+
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                            {{ name }}
+                        </button>
+                    </form>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom center">    
+            <a href="/debug/delete_games">
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                    Delete all games
+                </button>
+            </a>
+        </div>
+    </div>
+{% endblock %}
