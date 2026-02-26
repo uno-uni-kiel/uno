@@ -14,9 +14,9 @@ def handle_home(con: Connection, cur: Cursor):
         con.commit()
 
         session["spieler_id"] = new_id
-        return redirect("dashboard")
+        return redirect("create_or_join")
 
     if "spieler_id" in session:
-        return redirect("dashboard")
+        return redirect("create_or_join")
 
     return render_template("home.html")

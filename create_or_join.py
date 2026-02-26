@@ -2,7 +2,7 @@ from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
 from refresh import refresh
 
-def handle_dashboard(con: Connection, cur: Cursor):
+def handle_create_or_join(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
 
@@ -42,4 +42,7 @@ def handle_dashboard(con: Connection, cur: Cursor):
     res = cur.execute('''
         SELECT id, name, state FROM Game
     ''').fetchall()
-    return render_template("dashboard.html", games = filter(only_lobby, res))
+    return render_template(
+        "create_or_join.html", 
+        games = filter(only_lobby, res)
+    )
