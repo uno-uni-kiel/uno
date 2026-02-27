@@ -4,6 +4,7 @@ from refresh import get_refresh
 import time
 
 import game_simple
+import game_complex
 
 def handle_lobby(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
@@ -44,8 +45,8 @@ def handle_lobby(con: Connection, cur: Cursor):
                 game_simple.start_game(con, cur, game_id)
                 game_state = 1
             elif game_deck_id == 1:
-                # todo
-                print("not implemented yet")
+                game_complex.start_game(con, cur, game_id)
+                game_state = 1
 
     # redirect to game page if game is running
     if game_state == 1:

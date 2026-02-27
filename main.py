@@ -7,6 +7,7 @@ from lobby import handle_lobby
 
 from game import handle_game_end, handle_game_leave
 from game_simple import handle_game_simple
+from game_complex import handle_game_complex
 
 from refresh import handle_refresh
 
@@ -34,10 +35,13 @@ def lobby():
 def game_simple():
     return handle_game_simple(con, cur)
 
+@app.route("/game/complex", methods = [ "GET", "POST" ])
+def game_complex():
+    return handle_game_complex(con, cur)
+
 @app.route("/game/end", methods = [ "GET", "POST" ])
 def game_end():
     return handle_game_end(con, cur)
-
 
 @app.route("/game/leave", methods = [ "GET", "POST" ])
 def game_leave():

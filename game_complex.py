@@ -1,0 +1,236 @@
+from flask import Request, render_template, request, session, redirect
+from sqlite3 import Connection, Cursor
+
+import time
+import random
+
+def handle_game_complex(con: Connection, cur: Cursor):
+    if not "spieler_id" in session:
+        return redirect("/")
+
+    player_id = session["spieler_id"]
+    player_position, game_id = cur.execute('''
+        SELECT position, game_id FROM spieler WHERE id = ?
+    ''', [ player_id ]).fetchone()
+
+    # redirect if player isn't in any game
+    if not game_id:
+        return redirect("/create_or_join")
+
+    # actions
+    if request.method == "POST":
+        # draw a card
+        if request.form["type"] == "draw":
+            draw_card(con, cur, player_position, player_id, game_id)
+        # place a card
+        elif request.form["type"] == "place_card":
+            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"])
+
+    # retrieve game info
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # redirect to lobby if game hasn't begun
+    if game_state == 0:
+        return redirect("/lobby")
+
+    # redirect to end screen if game has ended
+    if game_state == 2:
+        return redirect("/game/end")
+
+    # retrieve all players including their card count
+    all_players = cur.execute('''
+        SELECT s.position, s.name, COUNT(z.complex_deck_id)
+        FROM spieler s
+        LEFT JOIN kartenzustand z ON s.id = z.ownership
+        WHERE s.game_id = ?
+        GROUP BY s.id
+        ORDER BY s.position ASC
+    ''', [ game_id ]).fetchall()
+
+    # retrieve all current players cards
+    player_cards = cur.execute('''
+        SELECT d.id, t.farbe, t.wert 
+        FROM kartenzustand z, complexdeck d, kartentyp t
+        WHERE z.ownership = ? AND z.game_id = ? AND
+            z.complex_deck_id = d.id AND d.kartentyp_id = t.id
+    ''', [ player_id, game_id ]).fetchall()
+
+    # retrieve current card info
+    current_card_farbe, current_card_wert = cur.execute('''
+        SELECT t.farbe, t.wert
+        FROM complexdeck d, kartentyp t
+        WHERE d.id = ? AND d.kartentyp_id = t.id
+    ''', [ game_current_card_id ]).fetchone()
+
+    return render_template(
+        "game_complex.html", 
+        all_players = all_players,
+        player_id = player_id,
+        player_position = player_position,
+        player_cards = player_cards,
+        game_turn = game_turn,
+        game_current_card_id = game_current_card_id,
+        current_card_farbe = current_card_farbe,
+        current_card_wert = current_card_wert
+    )
+
+def start_game(con: Connection, cur: Cursor, game_id: int):
+    # delete all players cards
+    cur.execute('''
+        DELETE FROM kartenzustand
+        WHERE ownership IN (
+            SELECT id FROM spieler WHERE game_id = ?
+        )
+    ''', [ game_id ])
+    con.commit()
+
+    # retrieve all joined player ids
+    all_player_ids = cur.execute('''
+        SELECT id FROM spieler WHERE game_id = ?
+    ''', [ game_id ]).fetchall()
+
+    # retrieve all available card ids
+    all_card_ids = cur.execute('''
+        SELECT id FROM complexdeck
+    ''').fetchall()
+
+    # shuffle card ids
+    random.shuffle(all_card_ids)
+
+    # give each player 7 random cards from complex deck
+    for player_id in all_player_ids:
+        for i in range(7):
+            card_id = all_card_ids.pop()
+
+            cur.execute('''
+                INSERT INTO kartenzustand (complex_deck_id, ownership, game_id) VALUES (?, ?, ?)
+            ''', [ card_id[0], player_id[0], game_id ])
+
+    # set one random card as current card
+    current_card_id = all_card_ids.pop()[0]
+
+    cur.execute('''
+        UPDATE game SET deck = ?, state = ?, current_card_id = ?, turn = ?, inverse_direction = ?, refresh = ? WHERE id = ?
+    ''', [ 
+        1, # deck (1 = complex)
+        1, # state (1 = running)
+        current_card_id,
+        1, # turn
+        0, # inverse direction
+        round(time.time()), # refresh
+        game_id
+    ])
+    con.commit()
+
+def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
+    new_turn = game_turn + 1
+    new_turn_player = cur.execute('''
+        SELECT 1 FROM spieler WHERE game_id = ? AND position = ? LIMIT 1
+    ''', [ game_id, new_turn ]).fetchone()
+
+    # reset turn to 1 if no new player is found
+    if new_turn_player is None:
+        new_turn = 1
+    
+    return new_turn
+
+def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int):
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # don't continue if game isn't running
+    if game_state != 1:
+        return
+
+    # don't continue if it isn't player's turn
+    if game_turn != player_position:
+        return
+
+    # pick random card out of complexdeck which has no state and isn't the current card
+    drawd_card_id = cur.execute('''
+        SELECT d.id
+        FROM complexdeck d, game g
+        LEFT JOIN kartenzustand k ON d.id = k.complex_deck_id
+        WHERE k.ownership IS NULL AND d.id != ?
+        ORDER BY random()
+        LIMIT 1
+    ''', [ game_current_card_id ]).fetchone()[0]
+
+    # set card ownership to player_id
+    cur.execute('''
+        INSERT INTO kartenzustand (complex_deck_id, ownership, game_id) VALUES (?, ?, ?)
+    ''', [ drawd_card_id, player_id, game_id ])
+    # new turn and refresh game
+    cur.execute('''
+        UPDATE game SET turn = ?, refresh = ? WHERE id = ?
+    ''', [ 
+        calculate_new_turn(con, cur, game_id, game_turn), 
+        round(time.time()), 
+        game_id 
+    ])
+    con.commit()
+
+def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int):
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # don't continue if game isn't running
+    if game_state != 1:
+        return
+
+    # don't continue if it isn't player's turn
+    if game_turn != player_position:
+        return
+
+    # retrieve current card info
+    current_card_farbe, current_card_wert = cur.execute('''
+        SELECT t.farbe, t.wert
+        FROM complexdeck d, kartentyp t
+        WHERE d.id = ? AND d.kartentyp_id = t.id
+    ''', [ game_current_card_id ]).fetchone()
+
+    # retrieve placing card info
+    card_farbe, card_wert = cur.execute('''
+        SELECT t.farbe, t.wert
+        FROM complexdeck d, kartentyp t
+        WHERE d.id = ? AND d.kartentyp_id = t.id
+    ''', [ card_id ]).fetchone()
+
+    # don't continue if neither card color or card value match
+    if current_card_farbe != card_farbe and current_card_wert != card_wert:
+        return
+
+    # card can be placed
+
+    # retrieve card count of player
+    player_card_count = cur.execute('''
+        SELECT COUNT(complex_deck_id) FROM kartenzustand
+        WHERE game_id = ? AND ownership = ?
+    ''', [ game_id, player_id ]).fetchone()[0]
+
+    # if card count = 1, player has won
+    if player_card_count == 1:
+        cur.execute('''
+            UPDATE game SET state = 2, winner = ?, refresh = ? WHERE id = ?
+        ''', [ player_id, round(time.time()), game_id ])
+        con.commit()
+        return
+
+    # set current_card_id to card_id, set new turn value and update refresh value
+    cur.execute('''
+        UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
+    ''', [ 
+        card_id, 
+        calculate_new_turn(con, cur, game_id, game_turn), 
+        round(time.time()), 
+        game_id 
+    ])
+    # delete kartenzustand
+    cur.execute('''
+        DELETE FROM kartenzustand WHERE complex_deck_id = ? AND ownership = ? AND game_id = ?
+    ''', [ card_id, player_id, game_id ])
+    con.commit()
