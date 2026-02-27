@@ -248,9 +248,10 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
 
     # set current_card_id to card_id, set new turn value and update refresh value
     cur.execute('''
-        UPDATE game SET current_card_id = ?, refresh = ? WHERE id = ?
+        UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
     ''', [ 
         card_id, 
+        game_turn, 
         round(time.time()), 
         game_id 
     ])
