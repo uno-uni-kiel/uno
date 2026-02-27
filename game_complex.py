@@ -213,7 +213,7 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
 
     # card can be placed
 
-    # Richtungswechsel
+    # Richtungswechsel: toggles inverse_direction betwenn 0 and 1 
     if card_wert == 10:
         inverse = cur.execute('''
             SELECT inverse_direction FROM game WHERE id = ?
@@ -223,6 +223,14 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
             UPDATE game SET inverse_direction = ? WHERE id = ?
         ''', [ inverse, game_id ])
         con.commit()
+
+    # Aussetze Karte
+    if card_wert == 12:
+        skipped_turn = calculate_new_turn(con, cur, game_id, game_turn)
+        game_turn = calculate_new_turn(con, cur, game_id, skipped_turn)
+    else:
+        game_turn = calculate_new_turn(con, cur, game_id, game_turn)        
+
 
     # retrieve card count of player
     player_card_count = cur.execute('''
@@ -240,10 +248,9 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
 
     # set current_card_id to card_id, set new turn value and update refresh value
     cur.execute('''
-        UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
+        UPDATE game SET current_card_id = ?, refresh = ? WHERE id = ?
     ''', [ 
         card_id, 
-        calculate_new_turn(con, cur, game_id, game_turn), 
         round(time.time()), 
         game_id 
     ])
