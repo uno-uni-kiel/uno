@@ -125,7 +125,14 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
     con.commit()
 
 def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
-    new_turn = game_turn + 1
+    inverse = cur.execute('''
+        SELECT inverse_direction FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()[0]
+    
+    if inverse == 0:
+        new_turn = game_turn + 1
+    elif inverse == 1: 
+        new_turn = game_turn - 1
     new_turn_player = cur.execute('''
         SELECT 1 FROM spieler WHERE game_id = ? AND position = ? LIMIT 1
     ''', [ game_id, new_turn ]).fetchone()
@@ -205,6 +212,17 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         return
 
     # card can be placed
+
+    # Richtungswechsel
+    if card_wert == 10:
+        inverse = cur.execute('''
+            SELECT inverse_direction FROM game WHERE id = ?
+        ''', [ game_id ]).fetchone()[0]
+        inverse = 1 - inverse
+        cur.execute('''
+            UPDATE game SET inverse_direction = ? WHERE id = ?
+        ''', [ inverse, game_id ])
+        con.commit()
 
     # retrieve card count of player
     player_card_count = cur.execute('''
