@@ -212,10 +212,6 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     if game_turn != player_position:
         return
 
-    # retrieve draw_stack info
-    draw_stack = cur.execute('''
-        SELECT draw_stack FROM game WHERE id = ?    
-    ''', [ game_id ]).fetchone()[0]
 
     # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
@@ -232,11 +228,12 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     ''', [ card_id ]).fetchone()
 
     # don't continue if neither card color or card value match, when draw_stack > 0 only +2 can be placed
-    if draw_stack > 0:
-        if card_wert != 11:
+    draw_stack = cur.execute('''
+        SELECT draw_stack FROM game WHERE id = ?    
+    ''', [ game_id ]).fetchone()[0]
+    if draw_stack > 0 and card_wert != 11:
             return
-    else:
-        if current_card_farbe != card_farbe and current_card_wert != card_wert:
+    if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
             return
 
     # card can be placed
@@ -254,10 +251,11 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         ''', [ inverse, game_id ])
 
     # +2 (draw_stack wird erhöht)
-    if card_wert == 11:
+    elif card_wert == 11:
         cur.execute('''
             UPDATE game SET draw_stack = draw_stack + 2 WHERE id = ?
         ''', [game_id])
+        game_turn = calculate_new_turn(con, cur, game_id, game_turn)
 
     # Aussetze Karte
     if card_wert == 12:
