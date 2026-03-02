@@ -24,7 +24,8 @@ def handle_game_complex(con: Connection, cur: Cursor):
             draw_card(con, cur, player_position, player_id, game_id)
         # place a card
         elif request.form["type"] == "place_card":
-            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"])
+            wish_farbe = request.form["wish_farbe"] if "wish_farbe" in request.form else None
+            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"], wish_farbe)
 
     # retrieve game info
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
@@ -231,7 +232,7 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
     ])
     con.commit()
 
-def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int):
+def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int, wish_farbe: int):
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
         SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
