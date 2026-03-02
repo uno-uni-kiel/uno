@@ -58,3 +58,6 @@ def handle_game_leave(con: Connection, cur: Cursor):
 
     # redirect to main page
     return redirect("/")
+
+def handle_game_complex_wish(con: Connection, cur: Cursor):
+    return render_template("game_complex_wish.html", card_id = request.form["card_id"])

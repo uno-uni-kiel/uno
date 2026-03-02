@@ -1,0 +1,70 @@
+{% extends 'base.html' %} 
+
+{% block title %}Ingame{% endblock %} 
+
+{% block content %}
+<style>
+.title {
+    translate: 0 -250px;
+}
+
+.wish-card-0 {
+    --translate-x: -150px;
+    --translate-y: 0px;
+    --rotate: -20deg;
+}
+
+.wish-card-1 {
+    --translate-x: -50px;
+    --translate-y: -30px;
+    --rotate: -10deg;
+}
+
+.wish-card-2 {
+    --translate-x: 50px;
+    --translate-y: -30px;
+    --rotate: 10deg;
+}
+
+.wish-card-3 {
+    --translate-x: 150px;
+    --translate-y: 0px;
+    --rotate: 20deg;
+}
+
+.wish-card {
+    position: absolute;
+    place-self: center; 
+    inset: 0;
+
+    translate: var(--translate-x) var(--translate-y);
+    transform: rotate(var(--rotate));
+
+    transition: all 0.2s;
+}
+
+.wish-card:hover {
+    translate: var(--translate-x) -50px;
+}
+</style>
+
+<div class="h-screen w-screen flex items-center justify-center text-center">
+    <h1 class="mb-4 text-3xl font-extrabold tracking-tight title">Wähle eine Farbe</h1>
+
+    {% for farbe in range(4) %}
+        <form action="/game/complex" method="post" class="flex-none wish-card wish-card-{{ farbe }}">
+            <input type="hidden" name="type" value="place_card" />
+            <input type="hidden" name="card_id" value="{{ card_id }}" />
+            <input type="hidden" name="wish_farbe" value="{{ farbe }}" />
+            
+            <button
+                type="submit"
+                style="height: 280px; width: 200px"
+                class="cursor-pointer rounded-xs">
+                <img
+                    src="/static/Grafiken/{{ farbe }}_13.png" />
+            </button>
+        </form>
+    {% endfor %}
+</div>
+{% endblock %}

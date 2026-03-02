@@ -5,13 +5,14 @@ from home import handle_home
 from create_or_join import handle_create_or_join
 from lobby import handle_lobby
 
-from game import handle_game_end, handle_game_leave
+from game import handle_game_end, handle_game_leave, handle_game_complex_wish
 from game_simple import handle_game_simple
 from game_complex import handle_game_complex
 
 from refresh import handle_refresh
 
 app = Flask(__name__)
+# secret key for session
 app.secret_key = '9^@w86n_@ws@m1jd_)7_&ayl@mm$9&pw9@noj*@)z)s9##dv$a'
 
 con = sqlite3.connect("database.db", check_same_thread = False)
@@ -38,6 +39,10 @@ def game_simple():
 @app.route("/game/complex", methods = [ "GET", "POST" ])
 def game_complex():
     return handle_game_complex(con, cur)
+
+@app.route("/game/complex/wish", methods = [ "POST" ])
+def game_complex_wish():
+    return handle_game_complex_wish(con, cur)
 
 @app.route("/game/end", methods = [ "GET", "POST" ])
 def game_end():
