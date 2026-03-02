@@ -1,6 +1,8 @@
 from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
 
+import time
+
 def handle_game_end(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
@@ -54,6 +56,12 @@ def handle_game_leave(con: Connection, cur: Cursor):
     cur.execute('''
         UPDATE spieler SET game_id = NULL WHERE id = ?
     ''', [ player_id ]).fetchone()
+    con.commit()
+
+    # refresh game
+    cur.execute('''
+        UPDATE game SET refresh = ? WHERE id = ?
+    ''', [ time.time(), game_id ]).fetchone()
     con.commit()
 
     # redirect to main page
