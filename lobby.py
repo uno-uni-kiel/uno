@@ -41,6 +41,20 @@ def handle_lobby(con: Connection, cur: Cursor):
             con.commit()
         # start the game
         if request.form["type"] == "start":
+            # address player positions
+            # retrieve all joined player ids randomly
+            all_player_ids = cur.execute('''
+                SELECT id FROM spieler WHERE game_id = ? ORDER BY random()
+            ''', [ game_id ]).fetchall()
+
+            next_position = 0
+            for player_id in all_player_ids:
+                next_position += 1
+
+                all_players = cur.execute('''
+                    UPDATE spieler SET position = ? WHERE id = ?
+                ''', [ next_position, player_id[0] ]).fetchall()
+
             if game_deck_id == 0:
                 game_simple.start_game(con, cur, game_id)
                 game_state = 1
@@ -60,13 +74,8 @@ def handle_lobby(con: Connection, cur: Cursor):
 
     # retrieve all players that joined the game
     all_players = cur.execute('''
-        SELECT position, name FROM spieler WHERE game_id = ?
+        SELECT name FROM spieler WHERE game_id = ?
     ''', [ game_id ]).fetchall()
-
-    # sort players by their positiion
-    def sortByPosition(e):
-        return e[0]
-    all_players.sort(key = sortByPosition)
 
     return render_template(
         "lobby.html", 
