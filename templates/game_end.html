@@ -1,21 +1,26 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} 
 
-{% block title %}Game End{% endblock %}
+{% block title %}Game End{% endblock %} 
 
 {% block content %}
-    <div class="h-screen w-screen flex items-center justify-center bg-emerald-800 text-white">
-        <div class="text-center">
-            <h2 class="text-3xl font-extrabold tracking-tight mb-4">» {{ winner_name }} « hat gewonnen! 🥳</h2>
+<div
+    class="flex h-screen w-screen items-center justify-center bg-emerald-800 text-white">
+    <div class="text-center">
+        <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
+            » {{ winner_name }} « hat gewonnen! 🥳
+        </h2>
 
-            <br><br>
+        <br /><br />
 
-            <form action="/game/leave" method="post">
-                <input type="hidden" name="type" value="start">
+        <form action="/game/leave" method="post">
+            <input type="hidden" name="type" value="start" />
 
-                <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                    Spiel verlassen
-                </button>
-            </form>
-        </div>
+            <button
+                type="submit"
+                class="w-full rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-rose-700">
+                Spiel verlassen
+            </button>
+        </form>
     </div>
+</div>
 {% endblock %}

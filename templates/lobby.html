@@ -1,71 +1,84 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} 
 
-{% block title %}Lobby{% endblock %}
+{% block title %}Lobby{% endblock %} 
 
 {% block content %}
-    <div class="h-screen w-screen flex items-center justify-center bg-emerald-800 text-white">
-        <div class="text-center">
-            <h2 class="text-3xl font-extrabold tracking-tight mb-4">» {{ game_name }} «</h2>
+<div
+    class="flex h-screen w-screen items-center justify-center bg-emerald-800 text-white">
+    <div class="text-center">
+        <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
+            » {{ game_name }} «
+        </h2>
 
-            <p>
-                Warten auf Spielbeginn ...
-            </p>
+        <p>Warten auf Spielbeginn ...</p>
 
-            <br><br>
-            
-            <div class="flex flex-row gap-10">
-                <form action="" method="post">
-                    <input type="hidden" name="type" value="select_deck">
-                    <input type="hidden" name="deck" value="simple">
+        <br /><br />
 
-                    {% if game_deck_id == 0 %}
-                    <button type="submit" style="height: 80px; width: 100px" class="shadow-sm rounded-xs ring-3 ring-emerald-500  ring-offset-4 ring-offset-emerald-800">
-                        <img src="/static/Grafiken/simpledeck_cover.png">
-                    </button>
-                    {% else %}
-                    <button type="submit" style="height: 80px; width: 100px" class="shadow-sm rounded-xs">
-                        <img src="/static/Grafiken/simpledeck_cover.png">
-                    </button>
-                    {% endif %}
+        <div class="flex flex-row gap-10">
+            <form action="" method="post">
+                <input type="hidden" name="type" value="select_deck" />
+                <input type="hidden" name="deck" value="simple" />
 
-                    <p class="font-semibold">Simple deck</p>
-                </form>
+                {% if game_deck_id == 0 %}
+                <button
+                    type="submit"
+                    style="height: 80px; width: 100px"
+                    class="rounded-xs shadow-sm ring-3 ring-emerald-500 ring-offset-4 ring-offset-emerald-800">
+                    <img src="/static/Grafiken/simpledeck_cover.png" />
+                </button>
+                {% else %}
+                <button
+                    type="submit"
+                    style="height: 80px; width: 100px"
+                    class="rounded-xs shadow-sm">
+                    <img src="/static/Grafiken/simpledeck_cover.png" />
+                </button>
+                {% endif %}
 
-                <form action="" method="post">
-                    <input type="hidden" name="type" value="select_deck">
-                    <input type="hidden" name="deck" value="complex">
-
-                    {% if game_deck_id == 1 %}
-                    <button type="submit" style="height: 80px; width: 100px" class="shadow-sm rounded-xs ring-3 ring-emerald-500  ring-offset-4 ring-offset-emerald-800">
-                        <img src="/static/Grafiken/complexdeck_cover.png">
-                    </button>
-                    {% else %}
-                    <button type="submit" style="height: 80px; width: 100px" class="shadow-sm rounded-xs">
-                        <img src="/static/Grafiken/complexdeck_cover.png">
-                    </button>
-                    {% endif %}
-
-                    <p class="font-semibold">Complex deck</p>
-                </form>
-            </div>
-
-            <br><br>
+                <p class="font-semibold">Simple deck</p>
+            </form>
 
             <form action="" method="post">
-                <input type="hidden" name="type" value="start">
+                <input type="hidden" name="type" value="select_deck" />
+                <input type="hidden" name="deck" value="complex" />
 
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
-                    Start
+                {% if game_deck_id == 1 %}
+                <button
+                    type="submit"
+                    style="height: 80px; width: 100px"
+                    class="rounded-xs shadow-sm ring-3 ring-emerald-500 ring-offset-4 ring-offset-emerald-800">
+                    <img src="/static/Grafiken/complexdeck_cover.png" />
                 </button>
+                {% else %}
+                <button
+                    type="submit"
+                    style="height: 80px; width: 100px"
+                    class="rounded-xs shadow-sm">
+                    <img src="/static/Grafiken/complexdeck_cover.png" />
+                </button>
+                {% endif %}
+
+                <p class="font-semibold">Complex deck</p>
             </form>
         </div>
 
-        <div class="absolute left-4 top-4 bg-emerald-700 p-4 rounded-lg">
-            {% for position, name in all_players %}
-            <p class="px-4 py-2">
-                {{ position }}. {{ name }}
-            </p>
-            {% endfor %}
-        </div>
+        <br /><br />
+
+        <form action="" method="post">
+            <input type="hidden" name="type" value="start" />
+
+            <button
+                type="submit"
+                class="w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-emerald-700">
+                Start
+            </button>
+        </form>
     </div>
+
+    <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
+        {% for position, name in all_players %}
+            <p class="px-4 py-2">{{ position }}. {{ name }}</p>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}
