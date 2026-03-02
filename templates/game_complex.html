@@ -23,7 +23,7 @@
                 <form action="" method="POST">
                     <input type="hidden" name="type" value="draw" />
 
-                    <button type="submit" class="cursor-pointer">
+                    <button type="submit" class="cursor-pointer stack-card-anim">
                         <img
                             src="/static/Grafiken/5_15.png"
                             style="height: 200px" />
@@ -42,19 +42,23 @@
         <div
             class="inline-flex flex-row overflow-x-auto rounded-lg bg-emerald-700">
             {% for id, farbe, wert, brightness in player_cards %}
-            <form action="" method="post" class="flex-none">
-                <input type="hidden" name="type" value="place_card" />
-                <input type="hidden" name="card_id" value="{{ id }}" />
-
-                <button
-                    type="submit"
-                    style="height: 280px; width: 200px"
-                    class="cursor-pointer rounded-xs p-4 shadow-sm">
-                    <img
-                        src="/static/Grafiken/{{ farbe }}_{{ wert }}.png"
-                        class="{{ brightness }}" />
-                </button>
-            </form>
+                {% if farbe == 4 %}
+                    <form action="/game/complex/wish" method="post" class="flex-none">
+                {% else %}
+                    <form action="" method="post" class="flex-none">
+                {% endif %}
+                        <input type="hidden" name="type" value="place_card" />
+                        <input type="hidden" name="card_id" value="{{ id }}" />
+                        
+                        <button
+                            type="submit"
+                            style="height: 280px; width: 200px"
+                            class="cursor-pointer p-4 uno-card-anim">
+                            <img
+                                src="/static/Grafiken/{{ farbe }}_{{ wert }}.png"
+                                class="{{ brightness }}" />
+                        </button>
+                    </form>
             {% endfor %}
         </div>
     </div>
