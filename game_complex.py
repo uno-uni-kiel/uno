@@ -136,11 +136,17 @@ def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
     new_turn_player = cur.execute('''
         SELECT 1 FROM spieler WHERE game_id = ? AND position = ? LIMIT 1
     ''', [ game_id, new_turn ]).fetchone()
+            
+    max_position = cur.execute('''
+        SELECT MAX(position) FROM spieler WHERE game_id = ?
+    ''', [ game_id ]).fetchone()[0]
 
-    # reset turn to 1 if no new player is found
-    if new_turn_player is None:
+    # handle wrap around
+    if new_turn > max_position:
         new_turn = 1
-    
+    elif new_turn == 0:
+        new_turn = max_position
+
     return new_turn
 
 def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int):
