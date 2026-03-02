@@ -76,9 +76,19 @@
     </div>
 
     <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
-        {% for position, name in all_players %}
-            <p class="px-4 py-2">{{ position }}. {{ name }}</p>
+        {% for player in all_players %}
+            <p class="px-4 py-2">{{ player[0] }}</p>
         {% endfor %}
     </div>
+
+    <form action="/game/leave" method="post" class="absolute bottom-4">
+        <input type="hidden" name="type" value="start" />
+
+        <button
+            type="submit"
+            class="w-full rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-rose-700">
+            Lobby verlassen
+        </button>
+    </form>
 </div>
 {% endblock %}
