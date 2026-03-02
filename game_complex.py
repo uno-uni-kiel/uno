@@ -31,6 +31,8 @@ def handle_game_complex(con: Connection, cur: Cursor):
         SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
+    is_players_turn = player_position == game_turn
+
     # redirect to lobby if game hasn't begun
     if game_state == 0:
         return redirect("/lobby")
@@ -64,12 +66,36 @@ def handle_game_complex(con: Connection, cur: Cursor):
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
+    current_card_is_draw_two = current_card_wert == 11
+
+    # calculate brightness class for each card
+    player_cards_with_brightness = []
+    for card_id, card_farbe, card_wert in player_cards:
+        if not is_players_turn:
+            player_cards_with_brightness.append(
+                (card_id, card_farbe, card_wert, "brightness-50")
+            )
+            continue
+
+        is_not_placeable = current_card_farbe != card_farbe and current_card_wert != card_wert
+        card_is_draw_two = card_wert == 11
+        
+        if is_not_placeable or (current_card_is_draw_two and not card_is_draw_two):
+            player_cards_with_brightness.append(
+                (card_id, card_farbe, card_wert, "brightness-70")
+            )
+            continue
+
+        player_cards_with_brightness.append(
+            (card_id, card_farbe, card_wert, "brightness-100")
+        )
+
     return render_template(
         "game_complex.html", 
         all_players = all_players,
         player_id = player_id,
         player_position = player_position,
-        player_cards = player_cards,
+        player_cards = player_cards_with_brightness,
         game_turn = game_turn,
         game_current_card_id = game_current_card_id,
         current_card_farbe = current_card_farbe,

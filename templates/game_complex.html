@@ -1,73 +1,77 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} 
 
-{% block title %}Ingame{% endblock %}
+{% block title %}Ingame{% endblock %} 
 
 {% block content %}
-    <div class="h-screen w-screen flex flex-col">
-        <div class="flex flex-3 text-center items-center justify-center">
-            <div>
-                <h2 class="text-3xl font-extrabold tracking-tight mb-4">
-                    {% for position, name, card_count in all_players %}
-                        {% if position == game_turn %}
-                            {% if position == player_position %}
-                                <i>Du</i> bist am Zug.
-                            {% else %}
+<div class="flex h-screen w-screen flex-col">
+    <div class="flex flex-3 items-center justify-center text-center">
+        <div>
+            <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
+                {% for position, name, card_count in all_players %} 
+                    {% if position == game_turn %} 
+                        {% if position == player_position %}
+                                <i>Du</i> bist am Zug. 
+                            {% else %} 
                                 {{ name }} ist am Zug.
-                            {% endif %}
-                        {% endif %}
-                    {% endfor %}
-                </h2>
+                        {%endif %} 
+                    {% endif %} 
+                {% endfor %}
+            </h2>
 
-                <div class="flex flex-row gap-4">
-                    <!-- stack -->
-                    <form action="" method="POST">
-                        <input type="hidden" name="type" value="draw">
+            <div class="flex flex-row gap-4">
+                <!-- stack -->
+                <form action="" method="POST">
+                    <input type="hidden" name="type" value="draw" />
 
-                        <button type="submit" class="cursor-pointer">
-                            <img src="/static/Grafiken/5_15.png" style="height: 200px">
-                        </button>
-                    </form>
-
-                    <!-- current card -->
-                    <img src="/static/Grafiken/{{ current_card_farbe }}_{{ current_card_wert }}.png" style="height: 200px">
-                </div>
-            </div>
-        </div>
-
-        <div class="flex-none p-8 flex justify-center">
-            <div class="bg-emerald-700 inline-flex flex-row overflow-x-auto rounded-lg">
-                {% for id, farbe, wert in player_cards %}
-                <form action="" method="post" class="flex-none">
-                    <input type="hidden" name="type" value="place_card">
-                    <input type="hidden" name="card_id" value="{{ id }}">
-
-                    <button type="submit" style="height: 280px; width: 200px" class="shadow-sm rounded-xs p-4 cursor-pointer">
-                        {% if game_turn == player_position %}
-                            {% if farbe != current_card_farbe and wert != current_card_wert %}
-                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" class="brightness-70">
-                            {% else %}
-                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png">
-                            {% endif %}
-                        {% else %}
-                            <img src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" class="brightness-50">
-                        {% endif %}
+                    <button type="submit" class="cursor-pointer">
+                        <img
+                            src="/static/Grafiken/5_15.png"
+                            style="height: 200px" />
                     </button>
                 </form>
-                {% endfor %}
+
+                <!-- current card -->
+                <img
+                    src="/static/Grafiken/{{ current_card_farbe }}_{{ current_card_wert }}.png"
+                    style="height: 200px" />
             </div>
         </div>
+    </div>
 
-        <div class="absolute left-4 top-4 bg-emerald-700 p-4 rounded-lg">
-            {% for position, name, card_count in all_players %}
-                {% if position == game_turn %}
-                <div class="px-4 py-2 bg-emerald-600 ring-2 rounded-lg">
-                {% else %}
-                <div class="px-4 py-2">
-                {% endif %}
-                    <p>{{ position }}. {{ name }}</p>
-                    <p class="text-gray-300">{{ card_count }} Karten</p>
-                </div>
+    <div class="flex flex-none justify-center p-8">
+        <div
+            class="inline-flex flex-row overflow-x-auto rounded-lg bg-emerald-700">
+            {% for id, farbe, wert, brightness in player_cards %}
+            <form action="" method="post" class="flex-none">
+                <input type="hidden" name="type" value="place_card" />
+                <input type="hidden" name="card_id" value="{{ id }}" />
+
+                <button
+                    type="submit"
+                    style="height: 280px; width: 200px"
+                    class="cursor-pointer rounded-xs p-4 shadow-sm">
+                    <img
+                        src="/static/Grafiken/{{ farbe }}_{{ wert }}.png"
+                        class="{{ brightness }}" />
+                </button>
+            </form>
             {% endfor %}
         </div>
     </div>
+
+    <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
+        {% for position, name, card_count in all_players %} {% if position ==
+        game_turn %}
+        <div class="rounded-lg bg-emerald-600 px-4 py-2 ring-2">
+            {% else %}
+            <div class="px-4 py-2">
+                {% endif %}
+                <p>{{ position }}. {{ name }}</p>
+                <p class="text-gray-300">{{ card_count }} Karten</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
 {% endblock %}
