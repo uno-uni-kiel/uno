@@ -274,9 +274,28 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     if current_card_farbe == 4 and db_wish_farbe is not None:
         current_card_farbe = db_wish_farbe
 
+    # don't continue if neither card color or card value match, when draw_stack > 0 only +2 can be placed
+    draw_stack = cur.execute('''
+        SELECT draw_stack FROM game WHERE id = ?    
+    ''', [ game_id ]).fetchone()[0]
+    if card_farbe != 4:
+        if draw_stack > 0 and card_wert != 11:
+            return
+        if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
+            return
+    
+    if current_card_farbe == 4 and card_farbe == 4:
+        return
+
+    # handle wish color logic
     if card_farbe == 4:
         if wish_farbe is None:
             return
+        # draw_stack erhöhen bei +4
+        if card_wert == 14:
+            cur.execute('''
+                UPDATE game SET draw_stack = draw_stack + 4 WHERE id = ?
+            ''', [ game_id] )
         
         new_turn = calculate_new_turn(con, cur, game_id, game_turn)
 
@@ -296,17 +315,6 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
 
         con.commit()
         return
-
-    # don't continue if neither card color or card value match, when draw_stack > 0 only +2 can be placed
-    draw_stack = cur.execute('''
-        SELECT draw_stack FROM game WHERE id = ?    
-    ''', [ game_id ]).fetchone()[0]
-    if card_farbe == 4:
-        pass
-    if draw_stack > 0 and card_wert != 11:
-            return
-    if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
-            return
 
     # card can be placed
 
@@ -328,10 +336,6 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
             UPDATE game SET draw_stack = draw_stack + 2 WHERE id = ?
         ''', [ game_id ])
     
-    elif card_wert == 14:
-        cur.execute('''
-            UPDATE game SET draw_stack = draw_stack + 4 WHERE id = ?
-        ''', [ game_id] )
 
     # Aussetze Karte
     if card_wert == 12:
