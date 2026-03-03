@@ -19,22 +19,43 @@ def handle_game_complex(con: Connection, cur: Cursor):
 
     # actions
     if request.method == "POST":
-        # draw a card
         if request.form["type"] == "draw":
-            draw_card(con, cur, player_position, player_id, player_uno, game_id)
-        # place a card
+            # draw a card
+            draw_card(
+                con = con, 
+                cur = cur, 
+                player_position = player_position, 
+                player_id = player_id, 
+                player_uno = player_uno, 
+                game_id = game_id
+            )
         elif request.form["type"] == "place_card":
-            wish_farbe = int(request.form["wish_farbe"]) if "wish_farbe" in request.form else None
-            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], wish_farbe)
+            # place a card
+            place_card(
+                con = con, 
+                cur = cur, 
+                player_position = player_position, 
+                player_id = player_id, 
+                player_uno = player_uno, 
+                game_id = game_id, 
+                card_id = request.form["card_id"], 
+                new_wish_farbe = int(request.form["wish_farbe"]) if "wish_farbe" in request.form 
+                    else None
+            )
         elif request.form["type"] == "uno":
-            uno(con, cur, player_id, player_uno, game_id)
+            # press 'uno' button
+            uno(
+                con = con, 
+                cur = cur, 
+                player_id = player_id, 
+                player_uno = player_uno, 
+                game_id = game_id
+            )
 
     # retrieve game info
     game_name, game_deck_id, game_state, game_turn, game_draw_stack, game_wish_farbe, game_current_card_id = cur.execute('''
         SELECT name, deck, state, turn, draw_stack, wish_farbe, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
-
-    is_players_turn = player_position == game_turn
 
     # redirect to lobby if game hasn't begun
     if game_state == 0:
@@ -69,25 +90,26 @@ def handle_game_complex(con: Connection, cur: Cursor):
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
-    # calculate brightness class for each card
-    def calculate_brightness_for_card(card_farbe, card_wert):
-        if not is_players_turn:
-            return "brightness-50"
+    def player_cards_with_is_placeable_map(card):
+        card_id = card[0]
+        card_farbe = card[1]
+        card_wert = card[2]
 
-        return "brightness-100" if can_place_card(
-            current_card_farbe = current_card_farbe,
-            current_card_wert = current_card_wert,
-            card_farbe = card_farbe,
-            card_wert = card_wert,
-            game_draw_stack = game_draw_stack,
-            game_wish_farbe = game_wish_farbe
-        ) else "brightness-70"
+        return (
+            card_id, 
+            card_farbe, 
+            card_wert, 
+            can_place_card(
+                current_card_farbe = current_card_farbe,
+                current_card_wert = current_card_wert,
+                card_farbe = card_farbe,
+                card_wert = card_wert,
+                game_draw_stack = game_draw_stack,
+                game_wish_farbe = game_wish_farbe
+            )
+        )
 
-    def player_cards_with_brightness_map(card):
-        brightness = calculate_brightness_for_card(card[1], card[2])
-        return (card[0], card[1], card[2], brightness, brightness == "brightness-100")
-
-    player_cards_with_brightness = map(player_cards_with_brightness_map, player_cards)
+    player_cards_with_is_placeable = map(player_cards_with_is_placeable_map, player_cards)
 
     show_uno = False
     game_turn_name = ""
@@ -104,14 +126,16 @@ def handle_game_complex(con: Connection, cur: Cursor):
         all_players = all_players,
         player_id = player_id,
         player_position = player_position,
-        player_cards = player_cards_with_brightness,
-        is_players_turn = is_players_turn,
+        player_cards = player_cards_with_is_placeable,
+        is_players_turn = player_position == game_turn,
         game_turn = game_turn,
         game_turn_name = game_turn_name,
         game_current_card_id = game_current_card_id,
+        game_draw_stack = game_draw_stack,
         game_wish_farbe = game_wish_farbe if current_card_farbe == 4 else None,
         current_card_farbe = current_card_farbe,
-        current_card_wert = current_card_wert
+        current_card_wert = current_card_wert,
+        show_uno = show_uno
     )
 
 def start_game(con: Connection, cur: Cursor, game_id: int):
@@ -200,14 +224,16 @@ def can_place_card(
 
     return True
 
-def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
-    inverse = cur.execute('''
-        SELECT inverse_direction FROM game WHERE id = ?
-    ''', [ game_id ]).fetchone()[0]
-    
-    if inverse == 0:
+def calculate_new_turn(
+        con: Connection, 
+        cur: Cursor, 
+        game_id: int, 
+        game_turn: int,
+        game_inverse_direction: int
+    ):
+    if game_inverse_direction == 0:
         new_turn = game_turn + 1
-    elif inverse == 1: 
+    elif game_inverse_direction == 1: 
         new_turn = game_turn - 1
 
     max_position = cur.execute('''
@@ -222,9 +248,17 @@ def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
 
     return new_turn
 
-def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int):
-    game_name, game_deck_id, game_state, game_turn, game_current_card_id, game_draw_stack = cur.execute('''
-        SELECT name, deck, state, turn, current_card_id, draw_stack FROM game WHERE id = ?
+def draw_card(
+        con: Connection, 
+        cur: Cursor, 
+        player_position: int, 
+        player_id: int,
+        player_uno: int, 
+        game_id: int
+    ):
+    # retrieve game info
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id, game_draw_stack, game_inverse_direction = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id, draw_stack, inverse_direction FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
     # don't continue if game isn't running
@@ -260,7 +294,7 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
             UPDATE spieler SET uno = 0 WHERE id = ?
         ''', [ player_id ])
 
-    # new turn, reset draw stack and refresh game
+    #  update game and refresh
     cur.execute('''
         UPDATE game SET 
         turn = ?, 
@@ -268,7 +302,13 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
         refresh = ? 
         WHERE id = ?
     ''', [ 
-        calculate_new_turn(con, cur, game_id, game_turn), 
+        calculate_new_turn(
+            con = con, 
+            cur = cur, 
+            game_id = game_id, 
+            game_turn = game_turn,
+            game_inverse_direction = game_inverse_direction
+        ), 
         round(time.time()), 
         game_id 
     ])
@@ -338,10 +378,22 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # Aussetze Karte
     elif card_wert == 12:
         # skip one player
-        game_turn = calculate_new_turn(con, cur, game_id, game_turn)
+        game_turn = calculate_new_turn(
+            con = con, 
+            cur = cur, 
+            game_id = game_id, 
+            game_turn = game_turn,
+            game_inverse_direction = game_inverse_direction
+        )
     
     # determine next game_turn value
-    game_turn = calculate_new_turn(con, cur, game_id, game_turn)
+    game_turn = calculate_new_turn(
+        con = con, 
+        cur = cur,
+        game_id = game_id, 
+        game_turn = game_turn,
+        game_inverse_direction = game_inverse_direction
+    )
 
     # ***** Winner Check *****
     # retrieve card count of player
@@ -368,7 +420,7 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
             UPDATE spieler SET uno = 0 WHERE id = ?
         ''', [ player_id ])
 
-    # update game values and refresh
+    # update game and refresh
     cur.execute('''
         UPDATE game SET 
         current_card_id = ?, 
@@ -387,7 +439,8 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         round(time.time()), 
         game_id 
     ])
-    # delete kartenzustand
+
+    # revoke card ownership from player by deleting kartenzustand
     cur.execute('''
         DELETE FROM kartenzustand WHERE complex_deck_id = ? AND ownership = ? AND game_id = ?
     ''', [ card_id, player_id, game_id ])
@@ -424,6 +477,7 @@ def uno(con: Connection, cur: Cursor, player_id: int, player_uno: int, game_id: 
         SELECT id FROM spieler WHERE uno = 1
     ''').fetchall()
     
+    # get random, unused card ids
     all_card_ids = cur.execute('''
         SELECT d.id
         FROM complexdeck d, game g
@@ -432,6 +486,7 @@ def uno(con: Connection, cur: Cursor, player_id: int, player_uno: int, game_id: 
         ORDER BY random()
     ''', [ game_current_card_id ]).fetchall()
 
+    # give each uno_player two cards
     for player_id in uno_player_ids:
         for i in range(2):
             card_id = all_card_ids.pop()
