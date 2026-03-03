@@ -33,13 +33,9 @@ def handle_create_or_join(con: Connection, cur: Cursor):
         if request.form["type"] == "join":
             game_id = request.form["game_id"]   
 
-        next_position = cur.execute('''
-            SELECT COUNT(name) FROM spieler WHERE game_id = ?
-        ''', [ game_id ]).fetchone()[0] + 1
-
         cur.execute('''
              UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
-        ''', [ game_id, next_position, player_id ])
+        ''', [ game_id, 0, player_id ])
 
         session["game_id"] = game_id
         refresh(con, cur, game_id)
