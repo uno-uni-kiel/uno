@@ -16,4 +16,5 @@
 
 ## Credits
 
+- tailwindcss: https://tailwindcss.com
 - Card graphics: https://alexder.itch.io/uno-card-game-asset-pack
