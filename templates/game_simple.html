@@ -70,15 +70,11 @@
     </div>
 
     <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
-        {% for position, name, card_count in all_players %} 
-            {% if position == game_turn %}
-                <div class="rounded-lg bg-emerald-600 px-4 py-2 ring-2">
-            {% else %}
-                <div class="px-4 py-2">
-            {% endif %}
-                    <p>{{ position }}. {{ name }}</p>
-                    <p class="text-gray-300">{{ card_count }} Karten</p>
-                </div>
+        {% for position, name, card_count in all_players %}
+            <div class="{{ 'rounded-lg bg-emerald-600 ring-2' if position == game_turn else '' }} px-4 py-2 ">
+                <p>{{ position }}. {{ name }}</p>
+                <p class="text-gray-300">{{ card_count }} Karten</p>
+            </div>
         {% endfor %}
     </div>
 </div>

@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="flex h-screen w-screen bg-emerald-900 text-gray-100">
+    <!-- create new game half -->
     <div
         class="flex flex-1 items-center justify-center border-r border-emerald-600 p-12">
         <div class="w-full max-w-md">
@@ -37,6 +38,7 @@
         </div>
     </div>
 
+    <!-- join game half -->
     <div class="flex flex-1 items-center justify-center bg-emerald-800 p-12">
         <div>
             <div class="text-end">
@@ -47,6 +49,7 @@
 
             <br />
 
+            <!-- list of joinable games -->
             <div class="space-y-6">
                 {% for id, name, state in games %}
                     <form method="post" action="">
@@ -64,6 +67,7 @@
         </div>
     </div>
 
+    <!-- debug -->
     <div class="absolute bottom-4 left-4">
         <a href="/debug/clean">
             <button

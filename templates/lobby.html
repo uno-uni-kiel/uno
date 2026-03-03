@@ -6,6 +6,7 @@
 <div
     class="flex h-screen w-screen items-center justify-center bg-emerald-800 text-white">
     <div class="text-center">
+        <!-- game name title -->
         <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
             » {{ game_name }} «
         </h2>
@@ -14,6 +15,7 @@
 
         <br /><br />
 
+        <!-- deck selector -->
         <div class="flex flex-row gap-10">
             <form action="" method="post">
                 <input type="hidden" name="type" value="select_deck" />
@@ -64,6 +66,7 @@
 
         <br /><br />
 
+        <!-- start button -->
         <form action="" method="post">
             <input type="hidden" name="type" value="start" />
 
@@ -75,12 +78,14 @@
         </form>
     </div>
 
+    <!-- joined players list -->
     <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
         {% for player in all_players %}
             <p class="px-4 py-2">{{ player[0] }}</p>
         {% endfor %}
     </div>
 
+    <!-- game leave button -->
     <form action="/game/leave" method="post" class="absolute bottom-4">
         <input type="hidden" name="type" value="start" />
 

@@ -55,28 +55,22 @@
         <div
             class="inline-flex flex-row overflow-x-auto rounded-lg bg-emerald-700">
             {% for id, farbe, wert, is_placeable in player_cards %}
-                {% if not is_placeable %}
-                    <form>
-                {% elif farbe == 4 %}
-                    <form action="/game/complex/wish" method="post" class="flex-none">
-                {% else %}
-                    <form action="" method="post" class="flex-none">
-                {% endif %}
-                        <input type="hidden" name="type" value="place_card" />
-                        <input type="hidden" name="card_id" value="{{ id }}" />
-                        
-                        <button
-                            type="submit"
-                            style="height: 280px; width: 200px"
-                            class="p-4 {{ 'cursor-pointer uno-card-anim' if (is_players_turn and is_placeable) else '' }}">
-                            <img
-                                src="/static/Grafiken/{{ farbe }}_{{ wert }}.png"
-                                class="{{ 
-                                        'brightness-50' if not is_players_turn 
-                                            else ('brightness-100' if is_placeable else 'brightness-70') 
-                                    }}" />
-                        </button>
-                    </form>
+                <form action="{{ '/game/complex/wish' if farbe == 4 and is_placeable else '' }}" method="post" class="flex-none">
+                    <input type="hidden" name="type" value="place_card" />
+                    <input type="hidden" name="card_id" value="{{ id }}" />    
+
+                    <button
+                        type="submit"
+                        style="height: 280px; width: 200px"
+                        class="p-4 {{ 'cursor-pointer uno-card-anim' if (is_players_turn and is_placeable) else '' }}">
+                        <img
+                            src="/static/Grafiken/{{ farbe }}_{{ wert }}.png"
+                            class="{{ 
+                                    'brightness-50' if not is_players_turn 
+                                        else ('brightness-100' if is_placeable else 'brightness-70') 
+                            }}" />
+                    </button>
+                </form>
             {% endfor %}
         </div>
     </div>
@@ -84,16 +78,11 @@
     <!-- player list -->
     <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
         {% for position, name, _, card_count in all_players %} 
-            {% if position == game_turn %}
-                <div class="rounded-lg bg-emerald-600 px-4 py-2 ring-2">
-            {% else %}
-                <div class="px-4 py-2">
-            {% endif %}
-                    <p>{{ position }}. {{ name }}</p>
-                    <p class="text-gray-300">{{ card_count }} Karten</p>
-                </div>
-            {% endfor %}
-        </div>
+            <div class="{{ 'rounded-lg bg-emerald-600 ring-2' if position == game_turn else '' }} px-4 py-2 ">
+                <p>{{ position }}. {{ name }}</p>
+                <p class="text-gray-300">{{ card_count }} Karten</p>
+            </div>
+        {% endfor %}
     </div>
     
     <div class="absolute top-4 right-4">

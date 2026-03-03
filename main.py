@@ -18,8 +18,7 @@ app.secret_key = '9^@w86n_@ws@m1jd_)7_&ayl@mm$9&pw9@noj*@)z)s9##dv$a'
 con = sqlite3.connect("database.db", check_same_thread = False)
 cur = con.cursor()
 
-# register routes
-
+# *** Basic routes ***
 @app.route("/", methods = [ "GET", "POST" ])
 def home():
     return handle_home(con, cur)
@@ -32,6 +31,7 @@ def create_or_join():
 def lobby():
     return handle_lobby(con, cur)
 
+# *** Game routes ***
 @app.route("/game/simple", methods = [ "GET", "POST" ])
 def game_simple():
     return handle_game_simple(con, cur)
@@ -52,6 +52,7 @@ def game_end():
 def game_leave():
     return handle_game_leave(con, cur)
 
+# *** Debug route ***
 @app.route("/debug/clean")
 def debug_clean():
     cur.execute("DELETE FROM game")
@@ -60,6 +61,7 @@ def debug_clean():
     con.commit()
     return redirect("/")
 
+# *** Refresh route ****
 @app.route("/refresh")
 def refresh():
     return handle_refresh(con, cur)

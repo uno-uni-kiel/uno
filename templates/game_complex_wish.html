@@ -51,8 +51,11 @@
 <div class="flex h-screen w-screen flex-col">
     <div class="flex flex-3 items-center justify-center text-center">
         <div>
-            <h1 class="mb-4 text-3xl font-extrabold tracking-tight title">Wähle eine Farbe</h1>
+            <h1 class="mb-4 text-3xl font-extrabold tracking-tight title">
+                Wähle eine Farbe
+            </h1>
 
+            <!-- color selector -->
             {% for farbe in range(4) %}
                 <form action="/game/complex" method="post" class="flex-none wish-card wish-card-{{ farbe }}">
                     <input type="hidden" name="type" value="place_card" />
@@ -71,6 +74,7 @@
         </div>
     </div>
 
+    <!-- bottom row -->
     <div class="flex flex-none justify-center p-8">
         <!-- player cards list -->
         <div
