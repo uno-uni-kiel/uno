@@ -326,6 +326,10 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # don't continue if it isn't player's turn
     if game_turn != player_position:
         return
+    
+    player_count = cur.execute('''
+        SELECT COUNT(id) FROM spieler WHERE game_id = ?
+    ''', [ game_id ]).fetchone()[0]
 
     # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
@@ -370,6 +374,17 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # Richtungswechsel: toggles inverse_direction betwenn 0 and 1 
     elif card_wert == 10:
         game_inverse_direction = not game_inverse_direction
+
+        # Richtungswechsel is like Aussetzen if player count = 2
+        if player_count == 2:
+            # skip one player
+            game_turn = calculate_new_turn(
+                con = con, 
+                cur = cur, 
+                game_id = game_id, 
+                game_turn = game_turn,
+                game_inverse_direction = game_inverse_direction
+            )
 
     # +2 (draw_stack wird erhöht)
     elif card_wert == 11:
