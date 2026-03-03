@@ -76,6 +76,14 @@
             {% endfor %}
         </div>
     </div>
+    
+    <div class="absolute top-4 right-4 rounded-lg bg-emerald-700 px-3 py-1 text-sm">
+    {% if wish_farbe is not none %}
+        {% set farben = {0: "Rot", 1: "Blau", 2: "Gelb", 3: "Grün"} %}
+        Wunschfarbe: {{ farben[wish_farbe] }}
+    </div>
+    {% endif %}
+</div>
 </div>
 
 {% endblock %}
