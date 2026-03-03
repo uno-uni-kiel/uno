@@ -67,6 +67,7 @@ def refresh():
     return handle_refresh(con, cur)
 
 # override static folder to enable caching
+# Copied from: https://stackoverflow.com/a/77569921
 @app.route('/static/<path:filename>')
 def static(filename):
     res = make_response(send_from_directory('static/', filename))

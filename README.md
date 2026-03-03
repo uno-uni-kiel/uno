@@ -13,3 +13,7 @@
 ## Start
 
 `python3 main.py`
+
+## Credits
+
+- Card graphics: https://alexder.itch.io/uno-card-game-asset-pack
