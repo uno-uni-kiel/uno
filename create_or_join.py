@@ -1,15 +1,22 @@
 from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
-from refresh import refresh
+import time
 
 def handle_create_or_join(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
         return redirect("/")
 
     player_id = session["spieler_id"]
-    game_id = cur.execute('''
+    player = cur.execute('''
         SELECT game_id FROM spieler WHERE id = ?
-    ''', [ player_id ]).fetchone()[0]
+    ''', [ player_id ]).fetchone()
+
+    # redirect to home if player doesn't exist
+    if player == None:
+        session.pop('spieler_id', None) 
+        return redirect("/")
+
+    game_id = player[0]
 
     # redirect to lobby if already joined a game
     if game_id:
@@ -34,11 +41,12 @@ def handle_create_or_join(con: Connection, cur: Cursor):
             game_id = request.form["game_id"]   
 
         cur.execute('''
-             UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
+            UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
         ''', [ game_id, 0, player_id ])
 
         session["game_id"] = game_id
-        refresh(con, cur, game_id)
+        cur.execute("UPDATE game SET refresh = ? WHERE id = ?", [ round(time.time()), game_id ])
+        con.commit()
         
         return redirect("/lobby")
 

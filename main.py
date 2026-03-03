@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, session
+from flask import Flask, render_template, redirect, session, make_response, send_from_directory
 import sqlite3
 
 from home import handle_home
@@ -11,7 +11,7 @@ from game_complex import handle_game_complex
 
 from refresh import handle_refresh
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder = None)
 # secret key for session
 app.secret_key = '9^@w86n_@ws@m1jd_)7_&ayl@mm$9&pw9@noj*@)z)s9##dv$a'
 
@@ -52,15 +52,24 @@ def game_end():
 def game_leave():
     return handle_game_leave(con, cur)
 
-@app.route("/debug/delete_games")
-def debug_deleteGames():
-    cur.execute("DELETE FROM Game")
+@app.route("/debug/clean")
+def debug_clean():
+    cur.execute("DELETE FROM game")
+    cur.execute("DELETE FROM spieler")
+    cur.execute("DELETE FROM kartenzustand")
     con.commit()
-    return "DONE"
+    return redirect("/")
 
 @app.route("/refresh")
 def refresh():
     return handle_refresh(con, cur)
+
+# override static folder to enable caching
+@app.route('/static/<path:filename>')
+def static(filename):
+    res = make_response(send_from_directory('static/', filename))
+    res.headers['Cache-Control'] = 'max-age'
+    return res
 
 if __name__ == "__main__":
     app.run(debug = True, threaded = False)
