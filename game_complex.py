@@ -291,14 +291,17 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     draw_stack = cur.execute('''
         SELECT draw_stack FROM game WHERE id = ?    
     ''', [ game_id ]).fetchone()[0]
+    if current_card_farbe == 4 and card_farbe == 4:
+        return
+    if card_farbe == 4 and draw_stack > 0:
+        return
     if card_farbe != 4:
         if draw_stack > 0 and card_wert != 11:
             return
         if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
             return
     
-    if current_card_farbe == 4 and card_farbe == 4:
-        return
+
 
     # handle wish color logic
     if card_farbe == 4:
