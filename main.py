@@ -52,11 +52,13 @@ def game_end():
 def game_leave():
     return handle_game_leave(con, cur)
 
-@app.route("/debug/delete_games")
-def debug_deleteGames():
-    cur.execute("DELETE FROM Game")
+@app.route("/debug/clean")
+def debug_clean():
+    cur.execute("DELETE FROM game")
+    cur.execute("DELETE FROM spieler")
+    cur.execute("DELETE FROM kartenzustand")
     con.commit()
-    return "DONE"
+    return redirect("/")
 
 @app.route("/refresh")
 def refresh():
