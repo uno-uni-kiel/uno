@@ -7,9 +7,16 @@ def handle_create_or_join(con: Connection, cur: Cursor):
         return redirect("/")
 
     player_id = session["spieler_id"]
-    game_id = cur.execute('''
+    player = cur.execute('''
         SELECT game_id FROM spieler WHERE id = ?
-    ''', [ player_id ]).fetchone()[0]
+    ''', [ player_id ]).fetchone()
+
+    # redirect to home if player doesn't exist
+    if player == None:
+        session.pop('spieler_id', None) 
+        return redirect("/")
+
+    game_id = player[0]
 
     # redirect to lobby if already joined a game
     if game_id:
