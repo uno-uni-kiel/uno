@@ -212,6 +212,9 @@ def can_place_card(
 
     # can place any card of wish color
     if current_card_farbe == 4:
+        # cannot put +2 on +4
+        if card_wert == 11:
+            return False
         return card_farbe == game_wish_farbe
 
     # allow black cards on all other cards
