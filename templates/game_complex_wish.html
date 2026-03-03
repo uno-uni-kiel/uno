@@ -48,23 +48,41 @@
 }
 </style>
 
-<div class="h-screen w-screen flex items-center justify-center text-center">
-    <h1 class="mb-4 text-3xl font-extrabold tracking-tight title">Wähle eine Farbe</h1>
+<div class="flex h-screen w-screen flex-col">
+    <div class="flex flex-3 items-center justify-center text-center">
+        <div>
+            <h1 class="mb-4 text-3xl font-extrabold tracking-tight title">Wähle eine Farbe</h1>
 
-    {% for farbe in range(4) %}
-        <form action="/game/complex" method="post" class="flex-none wish-card wish-card-{{ farbe }}">
-            <input type="hidden" name="type" value="place_card" />
-            <input type="hidden" name="card_id" value="{{ card_id }}" />
-            <input type="hidden" name="wish_farbe" value="{{ farbe }}" />
-            
-            <button
-                type="submit"
-                style="height: 280px; width: 200px"
-                class="cursor-pointer rounded-xs">
+            {% for farbe in range(4) %}
+                <form action="/game/complex" method="post" class="flex-none wish-card wish-card-{{ farbe }}">
+                    <input type="hidden" name="type" value="place_card" />
+                    <input type="hidden" name="card_id" value="{{ card_id }}" />
+                    <input type="hidden" name="wish_farbe" value="{{ farbe }}" />
+                    
+                    <button
+                        type="submit"
+                        style="height: 280px; width: 200px"
+                        class="cursor-pointer rounded-xs">
+                        <img
+                            src="/static/Grafiken/{{ farbe }}_16.png" />
+                    </button>
+                </form>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="flex flex-none justify-center p-8">
+        <!-- player cards list -->
+        <div
+            class="inline-flex flex-row overflow-x-auto rounded-lg bg-emerald-700">
+
+            {% for id, farbe, wert in player_cards %}
                 <img
-                    src="/static/Grafiken/{{ farbe }}_16.png" />
-            </button>
-        </form>
-    {% endfor %}
+                    class="m-2"
+                    style="height: 168px; width: 120px"
+                    src="/static/Grafiken/{{ farbe }}_{{ wert }}.png" />
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}

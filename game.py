@@ -68,4 +68,28 @@ def handle_game_leave(con: Connection, cur: Cursor):
     return redirect("/")
 
 def handle_game_complex_wish(con: Connection, cur: Cursor):
-    return render_template("game_complex_wish.html", card_id = request.form["card_id"])
+    if not "spieler_id" in session:
+        return redirect("/")
+
+    player_id = session["spieler_id"]
+    player_position, game_id, player_uno = cur.execute('''
+        SELECT position, game_id, uno FROM spieler WHERE id = ?
+    ''', [ player_id ]).fetchone()
+
+    # redirect if player isn't in any game
+    if not game_id:
+        return redirect("/create_or_join")
+
+    # retrieve all current players cards
+    player_cards = cur.execute('''
+        SELECT d.id, t.farbe, t.wert 
+        FROM kartenzustand z, complexdeck d, kartentyp t
+        WHERE z.ownership = ? AND z.game_id = ? AND
+            z.complex_deck_id = d.id AND d.kartentyp_id = t.id
+    ''', [ player_id, game_id ]).fetchall()
+
+    return render_template(
+        "game_complex_wish.html", 
+        card_id = request.form["card_id"],
+        player_cards = player_cards
+    )
