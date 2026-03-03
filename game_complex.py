@@ -17,7 +17,9 @@ def handle_game_complex(con: Connection, cur: Cursor):
     if not game_id:
         return redirect("/create_or_join")
 
-    wish_farbe = None
+    wish_farbe = cur.execute('''
+        SELECT wish_farbe FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()[0]
 
     # actions
     if request.method == "POST":
@@ -26,11 +28,15 @@ def handle_game_complex(con: Connection, cur: Cursor):
             draw_card(con, cur, player_position, player_id, game_id)
         # place a card
         elif request.form["type"] == "place_card":
-            wish_farbe = request.form.get("wish_farbe")  
-            if wish_farbe is not None:
-                wish_farbe = int(wish_farbe)
+            new_wish_farbe = request.form.get("wish_farbe")  
+            if new_wish_farbe is not None:
+                wish_farbe = int(new_wish_farbe)
+                cur.execute('''
+                    UPDATE game SET wish_farbe = ? WHERE id = ?
+                ''', [ wish_farbe, game_id ])
+                con.commit()
             
-            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"], wish_farbe)
+            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"], new_wish_farbe)
 
     # retrieve game info
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
