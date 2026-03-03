@@ -17,6 +17,10 @@ def handle_game_complex(con: Connection, cur: Cursor):
     if not game_id:
         return redirect("/create_or_join")
 
+    wish_farbe = cur.execute('''
+        SELECT wish_farbe FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()[0]
+
     # actions
     if request.method == "POST":
         # draw a card
@@ -24,8 +28,15 @@ def handle_game_complex(con: Connection, cur: Cursor):
             draw_card(con, cur, player_position, player_id, player_uno, game_id)
         # place a card
         elif request.form["type"] == "place_card":
-            wish_farbe = request.form["wish_farbe"] if "wish_farbe" in request.form else None
-            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], wish_farbe)
+            new_wish_farbe = request.form.get("wish_farbe")  
+            if new_wish_farbe is not None:
+                wish_farbe = int(new_wish_farbe)
+                cur.execute('''
+                    UPDATE game SET wish_farbe = ? WHERE id = ?
+                ''', [ wish_farbe, game_id ])
+                con.commit()
+            
+            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], new_wish_farbe)
         elif request.form["type"] == "uno":
             uno(con, cur, player_id, player_uno, game_id)
 
@@ -69,6 +80,9 @@ def handle_game_complex(con: Connection, cur: Cursor):
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
+    current_card_is_draw_two = current_card_wert == 11
+    current_card_is_wish_card = current_card_farbe == 4
+
     # calculate brightness class for each card
     def calculate_brightness_for_card(card_farbe, card_wert):
         if not is_players_turn:
@@ -109,7 +123,7 @@ def handle_game_complex(con: Connection, cur: Cursor):
         game_current_card_id = game_current_card_id,
         current_card_farbe = current_card_farbe,
         current_card_wert = current_card_wert,
-        show_uno = show_uno
+        wish_farbe = wish_farbe if current_card_farbe == 4 else None
     )
 
 def start_game(con: Connection, cur: Cursor, game_id: int):
@@ -262,9 +276,10 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
         SELECT t.farbe, t.wert
-        FROM complexdeck d, kartentyp t
+        FROM complexdeck d, kartentyp t, game g
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
+
 
     # retrieve placing card info
     card_farbe, card_wert = cur.execute('''
@@ -273,14 +288,57 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ card_id ]).fetchone()
 
+    db_wish_farbe = cur.execute('''
+        SELECT wish_farbe FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()[0]
+
+    if current_card_farbe == 4 and db_wish_farbe is not None:
+        current_card_farbe = db_wish_farbe
+
     # don't continue if neither card color or card value match, when draw_stack > 0 only +2 can be placed
     draw_stack = cur.execute('''
         SELECT draw_stack FROM game WHERE id = ?    
     ''', [ game_id ]).fetchone()[0]
-    if draw_stack > 0 and card_wert != 11:
+    if current_card_farbe == 4 and card_farbe == 4:
+        return
+    if card_farbe == 4 and draw_stack > 0:
+        return
+    if card_farbe != 4:
+        if draw_stack > 0 and card_wert != 11:
             return
-    if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
+        if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
             return
+    
+
+
+    # handle wish color logic
+    if card_farbe == 4:
+        if wish_farbe is None:
+            return
+        # draw_stack erhöhen bei +4
+        if card_wert == 14:
+            cur.execute('''
+                UPDATE game SET draw_stack = draw_stack + 4 WHERE id = ?
+            ''', [ game_id] )
+        
+        new_turn = calculate_new_turn(con, cur, game_id, game_turn)
+
+        cur.execute('''
+            UPDATE game
+            SET current_card_id = ?, 
+                wish_farbe = ?, 
+                turn = ?, 
+                refresh = ?
+            WHERE id = ?
+        ''', [ card_id, wish_farbe, new_turn, round(time.time()), game_id ])
+
+        cur.execute('''
+            DELETE FROM kartenzustand
+            WHERE complex_deck_id = ? AND ownership = ? AND game_id = ?
+        ''', [card_id, player_id, game_id])
+
+        con.commit()
+        return
 
     # card can be placed
 
@@ -300,8 +358,8 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     elif card_wert == 11:
         cur.execute('''
             UPDATE game SET draw_stack = draw_stack + 2 WHERE id = ?
-        ''', [game_id])
-        game_turn = calculate_new_turn(con, cur, game_id, game_turn)
+        ''', [ game_id ])
+    
 
     # Aussetze Karte
     if card_wert == 12:
