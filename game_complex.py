@@ -17,10 +17,6 @@ def handle_game_complex(con: Connection, cur: Cursor):
     if not game_id:
         return redirect("/create_or_join")
 
-    wish_farbe = cur.execute('''
-        SELECT wish_farbe FROM game WHERE id = ?
-    ''', [ game_id ]).fetchone()[0]
-
     # actions
     if request.method == "POST":
         # draw a card
@@ -28,21 +24,14 @@ def handle_game_complex(con: Connection, cur: Cursor):
             draw_card(con, cur, player_position, player_id, player_uno, game_id)
         # place a card
         elif request.form["type"] == "place_card":
-            new_wish_farbe = request.form.get("wish_farbe")  
-            if new_wish_farbe is not None:
-                wish_farbe = int(new_wish_farbe)
-                cur.execute('''
-                    UPDATE game SET wish_farbe = ? WHERE id = ?
-                ''', [ wish_farbe, game_id ])
-                con.commit()
-            
-            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], new_wish_farbe)
+            wish_farbe = int(request.form["wish_farbe"]) if "wish_farbe" in request.form else None
+            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], wish_farbe)
         elif request.form["type"] == "uno":
             uno(con, cur, player_id, player_uno, game_id)
 
     # retrieve game info
-    game_name, game_deck_id, game_state, game_turn, draw_stack, game_current_card_id = cur.execute('''
-        SELECT name, deck, state, turn, draw_stack, current_card_id FROM game WHERE id = ?
+    game_name, game_deck_id, game_state, game_turn, game_draw_stack, game_wish_farbe, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, draw_stack, wish_farbe, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
     is_players_turn = player_position == game_turn
@@ -80,38 +69,35 @@ def handle_game_complex(con: Connection, cur: Cursor):
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
-    current_card_is_draw_two = current_card_wert == 11
-    current_card_is_wish_card = current_card_farbe == 4
-
     # calculate brightness class for each card
     def calculate_brightness_for_card(card_farbe, card_wert):
         if not is_players_turn:
             return "brightness-50"
 
-        # only allow +2 card when "attacked" by +2 card
-        if current_card_wert == 11 and draw_stack > 0 and card_wert != 11:
-            return "brightness-70"
-
-        # if card is black
-        if card_farbe == 4:
-            return "brightness-70" if current_card_farbe == 4 else "brightness-100" 
-            
-        # if color or value match
-        if current_card_farbe == card_farbe or current_card_wert == card_wert:
-            return "brightness-100"
-        
-        return "brightness-70"
+        return "brightness-100" if can_place_card(
+            current_card_farbe = current_card_farbe,
+            current_card_wert = current_card_wert,
+            card_farbe = card_farbe,
+            card_wert = card_wert,
+            game_draw_stack = game_draw_stack,
+            game_wish_farbe = game_wish_farbe
+        ) else "brightness-70"
 
     def player_cards_with_brightness_map(card):
-        return (card[0], card[1], card[2], calculate_brightness_for_card(card[1], card[2]))
+        brightness = calculate_brightness_for_card(card[1], card[2])
+        return (card[0], card[1], card[2], brightness, brightness == "brightness-100")
 
     player_cards_with_brightness = map(player_cards_with_brightness_map, player_cards)
 
     show_uno = False
+    game_turn_name = ""
+
     for player in all_players:
+        if game_turn == player[0]:
+            game_turn_name = player[1]
+
         if player[2] == 1:
             show_uno = True
-            break
 
     return render_template(
         "game_complex.html", 
@@ -119,11 +105,13 @@ def handle_game_complex(con: Connection, cur: Cursor):
         player_id = player_id,
         player_position = player_position,
         player_cards = player_cards_with_brightness,
+        is_players_turn = is_players_turn,
         game_turn = game_turn,
+        game_turn_name = game_turn_name,
         game_current_card_id = game_current_card_id,
+        game_wish_farbe = game_wish_farbe if current_card_farbe == 4 else None,
         current_card_farbe = current_card_farbe,
-        current_card_wert = current_card_wert,
-        wish_farbe = wish_farbe if current_card_farbe == 4 else None
+        current_card_wert = current_card_wert
     )
 
 def start_game(con: Connection, cur: Cursor, game_id: int):
@@ -161,8 +149,16 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
     # set one random card as current card
     current_card_id = all_card_ids.pop()[0]
 
+    # update game and refresh
     cur.execute('''
-        UPDATE game SET deck = ?, state = ?, current_card_id = ?, turn = ?, inverse_direction = ?, refresh = ? WHERE id = ?
+        UPDATE game SET 
+        deck = ?, 
+        state = ?, 
+        current_card_id = ?, 
+        turn = ?, 
+        inverse_direction = ?, 
+        refresh = ? 
+        WHERE id = ?
     ''', [ 
         1, # deck (1 = complex)
         1, # state (1 = running)
@@ -174,6 +170,36 @@ def start_game(con: Connection, cur: Cursor, game_id: int):
     ])
     con.commit()
 
+def can_place_card(
+        current_card_farbe: int, 
+        current_card_wert: int, 
+        card_farbe: int, 
+        card_wert: int, 
+        game_draw_stack: int, 
+        game_wish_farbe: int
+    ):
+    # cannot place black on black
+    if current_card_farbe == 4 and card_farbe == 4:
+        return False
+
+    # cannot place any card other than +2 when draw_stack > 0
+    if game_draw_stack > 0 and (card_wert != 11 or card_farbe == 4):
+        return False
+
+    # can place any card of wish color
+    if current_card_farbe == 4:
+        return card_farbe == game_wish_farbe
+
+    # allow black cards on all other cards
+    if card_farbe == 4:
+        return True
+
+    # cannot place when color and value both differ
+    if current_card_farbe != card_farbe and current_card_wert != card_wert:
+        return False
+
+    return True
+
 def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
     inverse = cur.execute('''
         SELECT inverse_direction FROM game WHERE id = ?
@@ -183,10 +209,7 @@ def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
         new_turn = game_turn + 1
     elif inverse == 1: 
         new_turn = game_turn - 1
-    new_turn_player = cur.execute('''
-        SELECT 1 FROM spieler WHERE game_id = ? AND position = ? LIMIT 1
-    ''', [ game_id, new_turn ]).fetchone()
-            
+
     max_position = cur.execute('''
         SELECT MAX(position) FROM spieler WHERE game_id = ?
     ''', [ game_id ]).fetchone()[0]
@@ -200,8 +223,8 @@ def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
     return new_turn
 
 def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int):
-    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
-        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id, game_draw_stack = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id, draw_stack FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
     # don't continue if game isn't running
@@ -212,16 +235,8 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
     if game_turn != player_position:
         return
 
-    # retrieve draw_stack
-    draw_stack = cur.execute('''
-        SELECT draw_stack FROM game WHERE id = ?
-    ''', [ game_id ]).fetchone()[0]
-
     # decide how much cards to draw
-    if draw_stack > 0:
-        amount = draw_stack
-    else:
-        amount = 1
+    amount = game_draw_stack if game_draw_stack > 0 else 1
 
     # pick random card out of complexdeck which has no state and isn't the current card
     drawd_card_id = cur.execute('''
@@ -239,20 +254,19 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
             INSERT INTO kartenzustand (complex_deck_id, ownership, game_id) VALUES (?, ?, ?)
         ''', [ row[0], player_id, game_id ])
     
-    # draw_stack zurücksetzen
-    if draw_stack > 0:
-        cur.execute('''
-            UPDATE game SET draw_stack = 0 WHERE id = ? 
-        ''', [ game_id ])
-
+    # reset player's uno value
     if player_uno == 1:
         cur.execute('''
             UPDATE spieler SET uno = 0 WHERE id = ?
         ''', [ player_id ])
 
-    # new turn and refresh game
+    # new turn, reset draw stack and refresh game
     cur.execute('''
-        UPDATE game SET turn = ?, refresh = ? WHERE id = ?
+        UPDATE game SET 
+        turn = ?, 
+        draw_stack = 0, 
+        refresh = ? 
+        WHERE id = ?
     ''', [ 
         calculate_new_turn(con, cur, game_id, game_turn), 
         round(time.time()), 
@@ -260,9 +274,9 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
     ])
     con.commit()
 
-def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int, card_id: int, wish_farbe: int):
-    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
-        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int, card_id: int, new_wish_farbe: int):
+    game_name, game_deck_id, game_state, game_turn, game_current_card_id, game_draw_stack, game_inverse_direction, game_wish_farbe = cur.execute('''
+        SELECT name, deck, state, turn, current_card_id, draw_stack, inverse_direction, wish_farbe FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
     # don't continue if game isn't running
@@ -276,10 +290,9 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
         SELECT t.farbe, t.wert
-        FROM complexdeck d, kartentyp t, game g
+        FROM complexdeck d, kartentyp t
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
-
 
     # retrieve placing card info
     card_farbe, card_wert = cur.execute('''
@@ -288,85 +301,47 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ card_id ]).fetchone()
 
-    db_wish_farbe = cur.execute('''
-        SELECT wish_farbe FROM game WHERE id = ?
-    ''', [ game_id ]).fetchone()[0]
-
-    if current_card_farbe == 4 and db_wish_farbe is not None:
-        current_card_farbe = db_wish_farbe
-
-    # don't continue if neither card color or card value match, when draw_stack > 0 only +2 can be placed
-    draw_stack = cur.execute('''
-        SELECT draw_stack FROM game WHERE id = ?    
-    ''', [ game_id ]).fetchone()[0]
-    if current_card_farbe == 4 and card_farbe == 4:
-        return
-    if card_farbe == 4 and draw_stack > 0:
-        return
-    if card_farbe != 4:
-        if draw_stack > 0 and card_wert != 11:
-            return
-        if draw_stack == 0 and current_card_farbe != card_farbe and current_card_wert != card_wert:
-            return
-    
-
-
-    # handle wish color logic
-    if card_farbe == 4:
-        if wish_farbe is None:
-            return
-        # draw_stack erhöhen bei +4
-        if card_wert == 14:
-            cur.execute('''
-                UPDATE game SET draw_stack = draw_stack + 4 WHERE id = ?
-            ''', [ game_id] )
-        
-        new_turn = calculate_new_turn(con, cur, game_id, game_turn)
-
-        cur.execute('''
-            UPDATE game
-            SET current_card_id = ?, 
-                wish_farbe = ?, 
-                turn = ?, 
-                refresh = ?
-            WHERE id = ?
-        ''', [ card_id, wish_farbe, new_turn, round(time.time()), game_id ])
-
-        cur.execute('''
-            DELETE FROM kartenzustand
-            WHERE complex_deck_id = ? AND ownership = ? AND game_id = ?
-        ''', [card_id, player_id, game_id])
-
-        con.commit()
+    # abort if card is not placeable
+    if not can_place_card(
+        current_card_farbe = current_card_farbe,
+        current_card_wert = current_card_wert,
+        card_farbe = card_farbe,
+        card_wert = card_wert,
+        game_draw_stack = game_draw_stack,
+        game_wish_farbe = game_wish_farbe,
+    ):
         return
 
     # card can be placed
 
     # ***** Special Card Effects *****
 
+    # Wünschekarten
+    if card_farbe == 4:
+        if new_wish_farbe is None:
+            return
+
+        game_wish_farbe = new_wish_farbe
+        
+        # draw_stack erhöhen bei +4
+        if card_wert == 14:
+            game_draw_stack += 4
+
     # Richtungswechsel: toggles inverse_direction betwenn 0 and 1 
-    if card_wert == 10:
-        inverse = cur.execute('''
-            SELECT inverse_direction FROM game WHERE id = ?
-        ''', [ game_id ]).fetchone()[0]
-        inverse = 1 - inverse
-        cur.execute('''
-            UPDATE game SET inverse_direction = ? WHERE id = ?
-        ''', [ inverse, game_id ])
+    elif card_wert == 10:
+        game_inverse_direction = not game_inverse_direction
 
     # +2 (draw_stack wird erhöht)
     elif card_wert == 11:
-        cur.execute('''
-            UPDATE game SET draw_stack = draw_stack + 2 WHERE id = ?
-        ''', [ game_id ])
+        game_draw_stack += 2
     
-
     # Aussetze Karte
-    if card_wert == 12:
-        skipped_turn = calculate_new_turn(con, cur, game_id, game_turn)
-        game_turn = calculate_new_turn(con, cur, game_id, skipped_turn)
-    else:
-        game_turn = calculate_new_turn(con, cur, game_id, game_turn)        
+    elif card_wert == 12:
+        # skip one player
+        game_turn = calculate_new_turn(con, cur, game_id, game_turn)
+    
+    # determine next game_turn value
+    game_turn = calculate_new_turn(con, cur, game_id, game_turn)
 
     # ***** Winner Check *****
     # retrieve card count of player
@@ -393,12 +368,22 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
             UPDATE spieler SET uno = 0 WHERE id = ?
         ''', [ player_id ])
 
-    # set current_card_id to card_id, set new turn value and update refresh value
+    # update game values and refresh
     cur.execute('''
-        UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
+        UPDATE game SET 
+        current_card_id = ?, 
+        turn = ?,
+        draw_stack = ?,
+        inverse_direction = ?,
+        wish_farbe = ?,
+        refresh = ? 
+        WHERE id = ?
     ''', [ 
         card_id, 
         game_turn, 
+        game_draw_stack,
+        game_inverse_direction,
+        game_wish_farbe,
         round(time.time()), 
         game_id 
     ])

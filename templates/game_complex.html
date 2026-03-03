@@ -7,15 +7,11 @@
     <div class="flex flex-3 items-center justify-center text-center">
         <div>
             <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
-                {% for position, name, _, card_count in all_players %} 
-                    {% if position == game_turn %} 
-                        {% if position == player_position %}
-                                <i>Du</i> bist am Zug. 
-                            {% else %} 
-                                {{ name }} ist am Zug.
-                        {%endif %}
-                    {% endif %} 
-                {% endfor %}
+                {% if is_players_turn %}
+                    <i>Du</i> bist am Zug. 
+                {% else %}
+                    {{ game_turn_name }} ist am Zug.
+                {% endif %}
             </h2>
 
             <div class="flex flex-row gap-4">
@@ -55,8 +51,10 @@
     <div class="flex flex-none justify-center p-8">
         <div
             class="inline-flex flex-row overflow-x-auto rounded-lg bg-emerald-700">
-            {% for id, farbe, wert, brightness in player_cards %}
-                {% if farbe == 4 %}
+            {% for id, farbe, wert, brightness, is_placeable in player_cards %}
+                {% if not is_placeable %}
+                    <form>
+                {% elif farbe == 4 %}
                     <form action="/game/complex/wish" method="post" class="flex-none">
                 {% else %}
                     <form action="" method="post" class="flex-none">
@@ -91,11 +89,11 @@
         </div>
     </div>
     
-    <div class="absolute top-4 right-4 rounded-lg bg-emerald-700 px-3 py-1 text-sm">
-    {% if wish_farbe is not none %}
-        {% set farben = {0: "Rot", 1: "Blau", 2: "Gelb", 3: "Grün"} %}
-        Wunschfarbe: {{ farben[wish_farbe] }}
-    </div>
+    {% if game_wish_farbe is not none %}
+        <div class="absolute top-4 right-4 rounded-lg bg-emerald-700 px-3 py-1 text-sm">
+            {% set farben = {0: "Rot", 1: "Blau", 2: "Gelb", 3: "Grün"} %}
+            Wunschfarbe: {{ farben[game_wish_farbe] }}
+        </div>
     {% endif %}
 </div>
 </div>
