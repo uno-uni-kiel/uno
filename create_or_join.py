@@ -1,6 +1,6 @@
 from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
-from refresh import refresh
+import time
 
 def handle_create_or_join(con: Connection, cur: Cursor):
     if not "spieler_id" in session:
@@ -34,11 +34,12 @@ def handle_create_or_join(con: Connection, cur: Cursor):
             game_id = request.form["game_id"]   
 
         cur.execute('''
-             UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
+            UPDATE spieler SET game_id = ?, position = ? WHERE id = ?
         ''', [ game_id, 0, player_id ])
 
         session["game_id"] = game_id
-        refresh(con, cur, game_id)
+        cur.execute("UPDATE game SET refresh = ? WHERE id = ?", [ round(time.time()), game_id ])
+        con.commit()
         
         return redirect("/lobby")
 

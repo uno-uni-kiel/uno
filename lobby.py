@@ -1,6 +1,5 @@
 from flask import Request, render_template, request, session, redirect
 from sqlite3 import Connection, Cursor
-from refresh import get_refresh
 import time
 
 import game_simple
@@ -81,6 +80,5 @@ def handle_lobby(con: Connection, cur: Cursor):
         "lobby.html", 
         game_name = game_name, 
         game_deck_id = game_deck_id, 
-        all_players = all_players, 
-        refresh = get_refresh(con, cur, game_id)
+        all_players = all_players
     )
