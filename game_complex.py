@@ -79,6 +79,7 @@ def handle_game_complex(con: Connection, cur: Cursor):
     ''', [ game_current_card_id ]).fetchone()
 
     current_card_is_draw_two = current_card_wert == 11
+    current_card_is_wish_card = current_card_farbe == 4
 
     # calculate brightness class for each card
     player_cards_with_brightness = []
@@ -89,18 +90,24 @@ def handle_game_complex(con: Connection, cur: Cursor):
             )
             continue
 
-        is_not_placeable = current_card_farbe != card_farbe and current_card_wert != card_wert
-        card_is_draw_two = card_wert == 11
-        
-        if is_not_placeable or (current_card_is_draw_two and not card_is_draw_two):
-            player_cards_with_brightness.append(
-                (card_id, card_farbe, card_wert, "brightness-70")
-            )
-            continue
+        if card_farbe == 4:
+            if current_card_is_wish_card or current_card_is_draw_two:
+                brightness = "brightness-70"
+            else:
+                brightness = "brightness-100"
+        elif current_card_is_draw_two: 
+            if card_wert == 11:
+                brightness = "brightness-100"
+            else: 
+                brightness = "brightness-70"
+        else:
+            if card_farbe == current_card_farbe or card_wert == current_card_wert:
+                brightness = "brightness-100"  
+            else:
+                brightness = "brightness-70"
 
-        player_cards_with_brightness.append(
-            (card_id, card_farbe, card_wert, "brightness-100")
-        )
+        player_cards_with_brightness.append((card_id, card_farbe, card_wert, brightness))
+
 
     return render_template(
         "game_complex.html", 
