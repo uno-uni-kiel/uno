@@ -14,18 +14,29 @@
         <script src="{{ url_for('static', filename='refresh.js') }}"></script>
 
         <style>
-        .uno-card-anim, .stack-card-anim {
-            transition: all 0.2s;
-        }
+            .uno-card-anim, .stack-card-anim {
+                transition: all 0.2s;
+            }
 
-        .uno-card-anim:hover {
-            translate: 0 -15px;
-        }
+            .uno-card-anim:hover {
+                translate: 0 -15px;
+            }
 
-        .stack-card-anim:hover {
-            translate: 0 30px;
-            transform: rotate(-10deg);
-        }
+            .stack-card-anim:hover {
+                translate: 0 30px;
+                transform: rotate(-10deg);
+            }
+
+            /* Copied from: https://stackoverflow.com/q/63133843 */
+            body, html {
+                -webkit-touch-callout:none;
+                -webkit-user-select:none;
+                -khtml-user-select:none;
+                -moz-user-select:none;
+                -ms-user-select:none;
+                user-select:none;
+                -webkit-tap-highlight-color:rgba(0,0,0,0);
+            }
         </style>
     </head>
     <body class="h-screen w-screen bg-emerald-800 text-white">
