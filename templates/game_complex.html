@@ -7,20 +7,20 @@
     <div class="flex flex-3 items-center justify-center text-center">
         <div>
             <h2 class="mb-4 text-3xl font-extrabold tracking-tight">
-                {% for position, name, card_count in all_players %} 
+                {% for position, name, _, card_count in all_players %} 
                     {% if position == game_turn %} 
                         {% if position == player_position %}
                                 <i>Du</i> bist am Zug. 
                             {% else %} 
                                 {{ name }} ist am Zug.
-                        {%endif %} 
+                        {%endif %}
                     {% endif %} 
                 {% endfor %}
             </h2>
 
             <div class="flex flex-row gap-4">
                 <!-- stack -->
-                <form action="" method="POST">
+                <form action="" method="post">
                     <input type="hidden" name="type" value="draw" />
 
                     <button type="submit" class="cursor-pointer stack-card-anim">
@@ -35,6 +35,20 @@
                     src="/static/Grafiken/{{ current_card_farbe }}_{{ current_card_wert }}.png"
                     style="height: 200px" />
             </div>
+
+            {% if show_uno %}
+                <br /><br />
+
+                <form action="" method="post">
+                    <input type="hidden" name="type" value="uno" />
+
+                    <button
+                        type="submit"
+                        class="rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-rose-700">
+                        UNO !!
+                    </button>
+                </form>
+            {% endif %}
         </div>
     </div>
 
@@ -64,7 +78,7 @@
     </div>
 
     <div class="absolute top-4 left-4 rounded-lg bg-emerald-700 p-4">
-        {% for position, name, card_count in all_players %} {% if position ==
+        {% for position, name, _, card_count in all_players %} {% if position ==
         game_turn %}
         <div class="rounded-lg bg-emerald-600 px-4 py-2 ring-2">
             {% else %}

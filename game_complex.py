@@ -9,8 +9,8 @@ def handle_game_complex(con: Connection, cur: Cursor):
         return redirect("/")
 
     player_id = session["spieler_id"]
-    player_position, game_id = cur.execute('''
-        SELECT position, game_id FROM spieler WHERE id = ?
+    player_position, game_id, player_uno = cur.execute('''
+        SELECT position, game_id, uno FROM spieler WHERE id = ?
     ''', [ player_id ]).fetchone()
 
     # redirect if player isn't in any game
@@ -21,15 +21,17 @@ def handle_game_complex(con: Connection, cur: Cursor):
     if request.method == "POST":
         # draw a card
         if request.form["type"] == "draw":
-            draw_card(con, cur, player_position, player_id, game_id)
+            draw_card(con, cur, player_position, player_id, player_uno, game_id)
         # place a card
         elif request.form["type"] == "place_card":
             wish_farbe = request.form["wish_farbe"] if "wish_farbe" in request.form else None
-            place_card(con, cur, player_position, player_id, game_id, request.form["card_id"], wish_farbe)
+            place_card(con, cur, player_position, player_id, player_uno, game_id, request.form["card_id"], wish_farbe)
+        elif request.form["type"] == "uno":
+            uno(con, cur, player_id, player_uno, game_id)
 
     # retrieve game info
-    game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
-        SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
+    game_name, game_deck_id, game_state, game_turn, draw_stack, game_current_card_id = cur.execute('''
+        SELECT name, deck, state, turn, draw_stack, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
 
     is_players_turn = player_position == game_turn
@@ -44,7 +46,7 @@ def handle_game_complex(con: Connection, cur: Cursor):
 
     # retrieve all players including their card count
     all_players = cur.execute('''
-        SELECT s.position, s.name, COUNT(z.complex_deck_id)
+        SELECT s.position, s.name, s.uno, COUNT(z.complex_deck_id)
         FROM spieler s
         LEFT JOIN kartenzustand z ON s.id = z.ownership
         WHERE s.game_id = ?
@@ -67,29 +69,35 @@ def handle_game_complex(con: Connection, cur: Cursor):
         WHERE d.id = ? AND d.kartentyp_id = t.id
     ''', [ game_current_card_id ]).fetchone()
 
-    current_card_is_draw_two = current_card_wert == 11
-
     # calculate brightness class for each card
-    player_cards_with_brightness = []
-    for card_id, card_farbe, card_wert in player_cards:
+    def calculate_brightness_for_card(card_farbe, card_wert):
         if not is_players_turn:
-            player_cards_with_brightness.append(
-                (card_id, card_farbe, card_wert, "brightness-50")
-            )
-            continue
+            return "brightness-50"
 
-        is_not_placeable = current_card_farbe != card_farbe and current_card_wert != card_wert
-        card_is_draw_two = card_wert == 11
+        # only allow +2 card when "attacked" by +2 card
+        if current_card_wert == 11 and draw_stack > 0 and card_wert != 11:
+            return "brightness-70"
+
+        # if card is black
+        if card_farbe == 4:
+            return "brightness-70" if current_card_farbe == 4 else "brightness-100" 
+            
+        # if color or value match
+        if current_card_farbe == card_farbe or current_card_wert == card_wert:
+            return "brightness-100"
         
-        if is_not_placeable or (current_card_is_draw_two and not card_is_draw_two):
-            player_cards_with_brightness.append(
-                (card_id, card_farbe, card_wert, "brightness-70")
-            )
-            continue
+        return "brightness-70"
 
-        player_cards_with_brightness.append(
-            (card_id, card_farbe, card_wert, "brightness-100")
-        )
+    def player_cards_with_brightness_map(card):
+        return (card[0], card[1], card[2], calculate_brightness_for_card(card[1], card[2]))
+
+    player_cards_with_brightness = map(player_cards_with_brightness_map, player_cards)
+
+    show_uno = False
+    for player in all_players:
+        if player[2] == 1:
+            show_uno = True
+            break
 
     return render_template(
         "game_complex.html", 
@@ -100,7 +108,8 @@ def handle_game_complex(con: Connection, cur: Cursor):
         game_turn = game_turn,
         game_current_card_id = game_current_card_id,
         current_card_farbe = current_card_farbe,
-        current_card_wert = current_card_wert
+        current_card_wert = current_card_wert,
+        show_uno = show_uno
     )
 
 def start_game(con: Connection, cur: Cursor, game_id: int):
@@ -176,7 +185,7 @@ def calculate_new_turn(con: Connection, cur: Cursor, game_id: int, game_turn):
 
     return new_turn
 
-def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int):
+def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int):
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
         SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
@@ -222,6 +231,11 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
             UPDATE game SET draw_stack = 0 WHERE id = ? 
         ''', [ game_id ])
 
+    if player_uno == 1:
+        cur.execute('''
+            UPDATE spieler SET uno = 0 WHERE id = ?
+        ''', [ player_id ])
+
     # new turn and refresh game
     cur.execute('''
         UPDATE game SET turn = ?, refresh = ? WHERE id = ?
@@ -232,7 +246,7 @@ def draw_card(con: Connection, cur: Cursor, player_position: int, player_id: int
     ])
     con.commit()
 
-def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, game_id: int, card_id: int, wish_farbe: int):
+def place_card(con: Connection, cur: Cursor, player_position: int, player_id: int, player_uno: int, game_id: int, card_id: int, wish_farbe: int):
     game_name, game_deck_id, game_state, game_turn, game_current_card_id = cur.execute('''
         SELECT name, deck, state, turn, current_card_id FROM game WHERE id = ?
     ''', [ game_id ]).fetchone()
@@ -244,7 +258,6 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     # don't continue if it isn't player's turn
     if game_turn != player_position:
         return
-
 
     # retrieve current card info
     current_card_farbe, current_card_wert = cur.execute('''
@@ -312,6 +325,16 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
         con.commit()
         return
 
+    # reset players uno value
+    if player_card_count == 2:
+        cur.execute('''
+            UPDATE spieler SET uno = 1 WHERE id = ?
+        ''', [ player_id ])
+    elif player_uno == 1:
+        cur.execute('''
+            UPDATE spieler SET uno = 0 WHERE id = ?
+        ''', [ player_id ])
+
     # set current_card_id to card_id, set new turn value and update refresh value
     cur.execute('''
         UPDATE game SET current_card_id = ?, turn = ?, refresh = ? WHERE id = ?
@@ -325,4 +348,58 @@ def place_card(con: Connection, cur: Cursor, player_position: int, player_id: in
     cur.execute('''
         DELETE FROM kartenzustand WHERE complex_deck_id = ? AND ownership = ? AND game_id = ?
     ''', [ card_id, player_id, game_id ])
+    con.commit()
+
+def uno(con: Connection, cur: Cursor, player_id: int, player_uno: int, game_id: int):
+    game_state, game_current_card_id = cur.execute('''
+        SELECT state, current_card_id FROM game WHERE id = ?
+    ''', [ game_id ]).fetchone()
+
+    # don't continue if game isn't running
+    if game_state != 1:
+        return
+
+    # refresh game
+    cur.execute('''
+        UPDATE game SET refresh = ? WHERE id = ?
+    ''', [
+        round(time.time()), 
+        game_id 
+    ])
+
+    # player is affected by uno
+    if player_uno == 1:
+        # reset uno state
+        cur.execute('''
+            UPDATE spieler SET uno = 0 WHERE id = ?
+        ''', [ player_id ])
+        con.commit()
+        return
+
+    # all players with uno = 1 draw two cards
+    uno_player_ids = cur.execute('''
+        SELECT id FROM spieler WHERE uno = 1
+    ''').fetchall()
+    
+    all_card_ids = cur.execute('''
+        SELECT d.id
+        FROM complexdeck d, game g
+        LEFT JOIN kartenzustand k ON d.id = k.complex_deck_id
+        WHERE k.ownership IS NULL AND d.id != ?
+        ORDER BY random()
+    ''', [ game_current_card_id ]).fetchall()
+
+    for player_id in uno_player_ids:
+        for i in range(2):
+            card_id = all_card_ids.pop()
+
+            # set card ownership to player_id
+            cur.execute('''
+                INSERT INTO kartenzustand (complex_deck_id, ownership, game_id) VALUES (?, ?, ?)
+            ''', [ card_id[0], player_id[0], game_id ])
+
+        cur.execute('''
+            UPDATE spieler SET uno = 0 WHERE id = ?
+        ''', [ player_id[0] ])
+    
     con.commit()
